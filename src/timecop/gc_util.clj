@@ -41,25 +41,21 @@
   (let [scopes [CalendarScopes/CALENDAR_READONLY]
         cred (get-oauth-creds scopes secrets-loc data-store-dir)
         http-transport (GoogleNetHttpTransport/newTrustedTransport)
-        json-factory (JacksonFactory/getDefaultInstance)
-        ;; dataStoreFile (io/file data-store-dir)
-        ;; dataStoreFactory (FileDataStoreFactory. dataStoreFile)
-        ]
+        json-factory (JacksonFactory/getDefaultInstance)]
     (->
      (Calendar$Builder. http-transport json-factory cred)
      (.setApplicationName APP_NAME)
      .build)))
 
-(defn get-events [calList maxResults timeMin secrets-loc data-store-dir]
+(defn get-events [cal-list max-results time-min time-max secrets-loc data-store-dir]
   (let [service (get-calendar-service secrets-loc data-store-dir)]
     (->
      service
      .events
-     (.list calList)
-     (.setMaxResults maxResults)
-     (.setTimeMin timeMin)
-     (.setOrderBy "startTime")
+     (.list cal-list)
+     (#(if max-results (.setMaxResults % (int max-results)) %))
+     (.setTimeMin time-min)
+     (#(if time-max (.setTimeMax % time-max) %))
      (.setSingleEvents true)
      (.execute)
-     (.getItems)
-     (remove #(.isDateOnly %)))))
+     (.getItems))))
