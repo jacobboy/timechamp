@@ -5,6 +5,8 @@
 
 (def TC_URL_TEMPLATE "https://www.timecamp.com/third_party/api/%s/format/json/api_token/%s")
 
+(def MEETINGS_TASK_ID "9238867")
+
 (defn tc-get-url [endpoint api-token]
   (format TC_URL_TEMPLATE endpoint api-token))
 
@@ -29,4 +31,4 @@
 (defn post-tc [api-token data]
   (client/post
    (tc-post-url "entries" api-token)
-   {:form-params data :content-type :x-www-form-urlencoded}))
+   {:form-params data :content-type :x-www-form-urlencoded :throw-exceptions false}))
