@@ -25,9 +25,9 @@
         data-store-factory (FileDataStoreFactory. data-store-dir)
         client-secrets (GoogleClientSecrets/load json-factory stream-reader)
         flow-builder (GoogleAuthorizationCodeFlow$Builder. http-transport
-                                                          json-factory
-                                                          client-secrets
-                                                          scopes)
+                                                           json-factory
+                                                           client-secrets
+                                                           scopes)
         flow (-> flow-builder
                  (.setDataStoreFactory data-store-factory)
                  (.setAccessType "offline")
@@ -47,15 +47,20 @@
      (.setApplicationName APP_NAME)
      .build)))
 
-(defn get-events [cal-list max-results time-min time-max secrets-loc data-store-dir]
+(defn get-events [secrets-loc data-store-dir cal-list time-min time-max]
   (let [service (get-calendar-service secrets-loc data-store-dir)]
-    (->
-     service
-     .events
-     (.list cal-list)
-     (#(if max-results (.setMaxResults % (int max-results)) %))
-     (.setTimeMin time-min)
-     (#(if time-max (.setTimeMax % time-max) %))
-     (.setSingleEvents true)
-     (.execute)
-     (.getItems))))
+    (let [time-min (if (.isDateOnly time-min)
+                     (DateTime. (.getValue time-min))
+                     time-min)
+          time-max (if (.isDateOnly time-max)
+                     (DateTime. (.getValue time-max))
+                     time-max)]
+      (->
+       service
+       .events
+       (.list cal-list)
+       (.setSingleEvents true)
+       (.setTimeMin time-min)
+       (.setTimeMax time-max)
+       (.execute)
+       (.getItems)))))
