@@ -54,6 +54,7 @@
   (boolean (re-matches #"^\d{4}-\d{2}-\d{2}$" date)))
 
 (def cli-options
+  ;; TODO better input validation on start-date and end-date
   [["-s" "--start-date START_DATE" "Start date (inclusive) in yyyy-MM-dd format"
     :validate [yyyy-MM-dd? "Start date must be in yyyy-MM-dd format"]]
    ["-e" "--end-date END_DATE" "End date (inclusive) in yyyy-MM-dd format"
@@ -98,6 +99,10 @@
 
       errors ; errors => exit with description of errors
       {:exit-message (error-msg errors)}
+
+      ;; require start-date and end-date parameters
+      (not-every? (partial contains? options) [:start-date :end-date])
+      {:exit-message (error-msg ["Must provide both start and end date as yyyy-MM-dd values"])}
 
       :else
       {:args options})))
