@@ -16,7 +16,7 @@
     :start_time "10:15:00"
     :end_time "10:30:00"
     :duration "900"
-    :note "{\"summary\":\"Review Preparation\",\"external-id\":\"Simple ID\"}"
+    :note "summary: Review Preparation\nexternal-id: Simple ID\n",
     :task_id "9238867"
     }])
 
@@ -30,16 +30,16 @@
 (def mock-tc-events-overnight
   [{:date "2017-05-10"
     :start_time "22:00:00"
-    :end_time "11:59:59"
+    :end_time "23:59:59"
     :duration (str (- (* 2 60 60) 1))
-    :note "{\"summary\":\"Sous vide roast\",\"external-id\":\"overnight ID\"}"
+    :note "summary: Sous vide roast\nexternal-id: overnight ID\n"
     :task_id "9238867"
     }
    {:date "2017-05-11"
     :start_time "00:00:00"
     :end_time "18:00:00"
     :duration (str (* 18 60 60))
-    :note "{\"summary\":\"Sous vide roast\",\"external-id\":\"overnight ID\"}"
+    :note "summary: Sous vide roast\nexternal-id: overnight ID\n"
     :task_id "9238867"
     }])
 
@@ -55,21 +55,21 @@
     :start_time "22:00:00"
     :end_time "23:59:59"
     :duration (str (- (* 2 60 60) 1))
-    :note "{\"summary\":\"Sous vide brisket\",\"external-id\":\"over 2 nights ID\"}"
+    :note "summary: Sous vide brisket\nexternal-id: over 2 nights ID\n"
     :task_id "9238867"
     }
    {:date "2017-05-11"
     :start_time "00:00:00"
     :end_time "23:59:59"
     :duration (str (- (* 24 60 60) 1))
-    :note "{\"summary\":\"Sous vide brisket\",\"external-id\":\"over 2 nights ID\"}"
+    :note "summary: Sous vide brisket\nexternal-id: over 2 nights ID\n"
     :task_id "9238867"
     }
    {:date "2017-05-12"
     :start_time "00:00:00"
     :end_time "08:00:00"
     :duration (str (* 8 60 60))
-    :note "{\"summary\":\"Sous vide brisket\",\"external-id\":\"over 2 nights ID\"}"
+    :note "summary: Sous vide brisket\nexternal-id: over 2 nights ID\n"
     :task_id "9238867"
     }])
 
@@ -111,6 +111,6 @@
   (testing "A Google event across midnight is transformed properly"
     (is (= mock-tc-events-overnight (gc-event-to-tc-events mock-gc-event-overnight)))))
 
-(deftest test-gc-event-to-tc-events-overnight
+(deftest test-gc-event-to-tc-events-over-two-nights
   (testing "A Google event across multiple midnights is transformed properly"
     (is (= mock-tc-events-over-two-nights (gc-event-to-tc-events mock-gc-event-over-two-nights)))))
