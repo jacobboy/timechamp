@@ -10,7 +10,9 @@
                  [com.google.apis/google-api-services-calendar "v3-rev243-1.22.0"]
                  [org.clojure/clojure "1.8.0"]
                  [org.clojure/data.json "0.2.6"]
-                 [org.clojure/tools.cli "0.3.5"]]
+                 [org.clojure/tools.cli "0.3.5"]
+                 [prismatic/schema "1.1.6"]]
   :main ^:skip-aot timecop.core
   :target-path "target/%s"
-  :profiles {:uberjar {:aot :all}})
+  :profiles {:uberjar {:aot :all}
+             :dev {:source-paths ["dev"]}})

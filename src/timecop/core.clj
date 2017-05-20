@@ -1,64 +1,36 @@
 (ns timecop.core
   (:gen-class)
-  (:require [clj-yaml.core :as yaml]
-            [clojure.data.json :as json]
+  (:require [clojure.data.json :as json]
             [clojure.string :as str]
             [clojure.tools.cli :refer [parse-opts]]
-            [timecop.date-helpers
-             :refer
-             [beginning-of-next-day
-              end-of-day
-              gc-duration
-              gc-date-to-tc-date
-              gc-date-to-tc-time]]
+            [schema.core :as s]
             [timecop.gc-util :as gc]
-            [timecop.tc-util :as tc])
-  (:import com.google.api.client.util.DateTime
-           [com.google.api.services.calendar.model Event EventDateTime]
-           java.lang.System))
-
-;; (defmulti canonical-event #(:source (meta %)))
-
-;; (defmethod canonical-event :gc [gc-event]
-;;   (let [event (select-keys gc-event ["start" "end" "summary"])]
-;;     event))
-
-;; (defmethod canonical-event :tc [tc-event]
-;;   (tc-event))
-
-(defn gc-event-to-tc-events [^Event gc-event]
-  (let [start (.. gc-event getStart getDateTime)
-        end (.. gc-event getEnd getDateTime)
-        start-date (gc-date-to-tc-date start)
-        end-date (gc-date-to-tc-date end)
-        summary (. gc-event getSummary)
-        external-id (. gc-event getId)
-        duration (gc-duration start end)]
-    (if (= start-date end-date)
-      [{:date start-date
-        :start_time (gc-date-to-tc-time start)
-        :end_time (gc-date-to-tc-time end)
-        :duration (str duration)
-        ;; timecamp couldn't deal with the quotes in json, use yaml to avoid quotes
-        :note (yaml/generate-string {:summary summary :external-id external-id}
-                                    :dumper-options {:flow-style :block})
-        :task_id tc/MEETINGS_TASK_ID}]
-      (let [gc-event-first (.setEnd (.clone gc-event)
-                                    (.setDateTime (EventDateTime.) (end-of-day start)))
-            gc-event-rest (.setStart (.clone gc-event)
-                                     (.setDateTime (EventDateTime.) (beginning-of-next-day start)))]
-        (flatten [(gc-event-to-tc-events gc-event-first)
-                  (gc-event-to-tc-events gc-event-rest)])))))
+            [timecop.tc-util :as tc]
+            [timecop.schema :refer :all])
+  (:import java.lang.System
+           [java.time LocalDate LocalDateTime]
+           timecop.schema.CanonicalEvent))
 
 (defn yyyy-MM-dd? [date]
   (boolean (re-matches #"^\d{4}-\d{2}-\d{2}$" date)))
 
+(s/defn first-second-of-date [date :- LocalDate]
+  (.atStartOfDay date))
+
+(s/defn last-second-of-date [date :- LocalDate]
+  (.atTime date 23 59 59))
+
 (def cli-options
   ;; TODO better input validation on start-date and end-date
   [["-s" "--start-date START_DATE" "Start date (inclusive) in yyyy-MM-dd format"
-    :validate [yyyy-MM-dd? "Start date must be in yyyy-MM-dd format"]]
+    ;; going through local date ended up much simpler than trying to use LocalDateTime directly
+    :parse-fn #(first-second-of-date (LocalDate/parse %))
+    ; :validate [yyyy-MM-dd? "Start date must be in yyyy-MM-dd format"]
+    ]
    ["-e" "--end-date END_DATE" "End date (inclusive) in yyyy-MM-dd format"
-    :validate [yyyy-MM-dd? "End date must be in yyyy-MM-dd format"]]
+    :parse-fn #(last-second-of-date (LocalDate/parse %))
+    ; :validate [yyyy-MM-dd? "End date must be in yyyy-MM-dd format"]
+    ]
    ["-i" "--calendar-id" "ID of the Google calendar to read events from. Default: primary"
     :default "primary"]
    ["-c" "--client-secrets-loc CLIENT_SECRETS"
@@ -104,6 +76,9 @@
       (not-every? (partial contains? options) [:start-date :end-date])
       {:exit-message (error-msg ["Must provide both start and end date as yyyy-MM-dd values"])}
 
+      (not (.isBefore (:start-date options) (:end-date options)))
+      {:exit-message (error-msg ["End date must be after start date"])}
+
       :else
       {:args options})))
 
@@ -111,24 +86,33 @@
   (println msg)
   (System/exit status))
 
-(defn post-tc [tc-api-token tc-event]
-  (let [{:keys [status body] :as response} (tc/post-tc tc-api-token tc-event)]
-    {:ok (>= 300 status)
-     :status status
-     :body (json/read-str body)
-     :tc-event tc-event}))
+(s/defn beginning-of-next-day [datetime :- LocalDateTime]
+  (-> datetime (.toLocalDate) (.plusDays 1) first-second-of-date))
+
+(s/defn end-of-day [datetime :- LocalDateTime]
+  (-> datetime (.toLocalDate) last-second-of-date))
+
+(s/defn split-event-at-midnight :- [CanonicalEvent]
+  "Break an event that spans multiple days into multiple events that
+  do not cross midnight, for compatibility with TimeCamp.'"
+  [{:keys [start-time end-time description
+           source source-id task-type] :as event} :- CanonicalEvent]
+  (letfn [(date [datetime] (.toLocalDate datetime))]
+    (if (= (date (:start-time event)) (date (:end-time event)))
+      [event]
+      (let [event-first (assoc event :end-time (end-of-day start-time))
+            event-rest (assoc event :start-time (beginning-of-next-day start-time))]
+        (cons event-first (split-event-at-midnight event-rest))))))
 
 (defn do-the-thing [{:keys [start-date end-date calendar-id
                             client-secrets-loc data-store-dir tc-api-token]}]
-  (let [cal-list "jacob@picwell.com"
-        time-min (DateTime. start-date)
-        time-max (DateTime. end-date)
-        gc-events (gc/get-events client-secrets-loc data-store-dir calendar-id time-min time-max)
-        tc-events (mapcat gc-event-to-tc-events gc-events)
-        {successes true failures false} (group-by :ok (map #(post-tc tc-api-token %) tc-events))]
+  (let [events (gc/get-events client-secrets-loc data-store-dir calendar-id start-date end-date)
+        split-events (mapcat split-event-at-midnight events)
+        {successes true failures false}
+        (group-by :ok (map #(tc/summary-post-tc-entry tc-api-token %) split-events))]
+    ;; TODO print failures as they happen?
     (when (some? failures) (json/pprint failures))
     (print (format "%d successes, %d failures" (count successes) (count failures)))))
-
 
 (defn -main [& args]
   (let [{:keys [args exit-message ok?]} (validate-args args)]
