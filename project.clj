@@ -11,7 +11,9 @@
                  [org.clojure/clojure "1.8.0"]
                  [org.clojure/data.json "0.2.6"]
                  [org.clojure/tools.cli "0.3.5"]
-                 [prismatic/schema "1.1.6"]]
+                 [prismatic/schema "1.1.6"]
+                 [org.clojure/algo.generic "0.1.2"]
+                 [ring/ring-codec "1.0.1"]]
   :main ^:skip-aot timecop.core
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all}

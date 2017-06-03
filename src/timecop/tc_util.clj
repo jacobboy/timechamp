@@ -8,9 +8,9 @@
            java.time.LocalDateTime
            timecop.schema.CanonicalEvent))
 
-(def TC_URL_TEMPLATE "https://www.timecamp.com/third_party/api/%s/format/json/api_token/%s")
+(def ^:const TC_URL_TEMPLATE "https://www.timecamp.com/third_party/api/%s/format/json/api_token/%s")
 
-(def task-ids {:meeting "9238867"})
+(def ^:const TASK_IDS {:meeting "9238867"})
 
 (defn tc-get-url [endpoint api-token]
   (format TC_URL_TEMPLATE endpoint api-token))
@@ -28,7 +28,9 @@
         matching-users (filter #(= email (% "email")) users)]
     ((first matching-users) "user_id")))
 
-(defn get-entries [api-token user-id from to]
+(defn get-entries
+  "Get TimeCamp entries within a date range.  Date formats must be yyyy-MM-dd"
+  [api-token user-id from to]
   (let [url (str/join "/" [(tc-get-url "entries" api-token) "from" from "to" to "user_ids" user-id])
         response (client/get url)]
     (json/read-str (:body response))))
@@ -47,8 +49,11 @@
    ;; timecamp couldn't deal with the quotes in json, use yaml to avoid quotes
    :note (yaml/generate-string {:description description :source source :source-id source-id}
                                :dumper-options {:flow-style :block})
-   :task_id (task-ids task-type)
-   ;; :duration not actually required, allows an event to tracked as some other amount of time
+   :task_id (name (get TASK_IDS task-type task-type))
+   ;; TimeCamp docs say :duration is required, it isn't.
+   ;; It weirdly allows an event to tracked as some other amount of time and
+   ;; doesn't appear to be editable via the portal, meaning this program could
+   ;; create an error the user couldn't easily find or fix.
    })
 
 (defn post-tc-entry [api-token data]
@@ -56,7 +61,7 @@
    (tc-post-url "entries" api-token)
    {:form-params data :content-type :x-www-form-urlencoded :throw-exceptions false}))
 
-(s/defn summary-post-tc-entry [tc-api-token :- String event :- CanonicalEvent]
+(s/defn summary-post-event-to-tc [tc-api-token :- String event :- CanonicalEvent]
   (let [tc-event (canonical-event-to-tc-event event)
         {:keys [status body] :as response} (post-tc-entry tc-api-token tc-event)]
     {:ok (>= 300 status)
