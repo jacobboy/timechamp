@@ -1,5 +1,6 @@
 (ns timecop.businesstime
-  (:require [schema.core :as s]
+  (:require [clojure.algo.generic.functor :refer [fmap]]
+            [schema.core :as s]
             [timecop.schema :refer [canonical-event]])
   (:import [java.time LocalDate LocalDateTime LocalTime]
            java.time.temporal.ChronoUnit
@@ -9,10 +10,23 @@
 (def ^:const TC_SOURCE :timecop)
 (def ^:const TC_SOURCE_ID "TimeCop ID")
 
-(s/defn first-second-of-date [date :- LocalDate]
+(def ^:const HOURS_MINS_RE
+  #"(?x)                    # allow embedded whitespace and comments
+    ^                       # match start
+    (?=.)                   # positive lookahead for . to avoid matching empty string
+    (?:(\d*(?:\.\d*)?)h)?   # int or float, followed by 'h', capture the number
+    (?:(\d*(?:\.\d*)?)m)?   # same, followed by 'm', capture number
+    $                       # match end")
+(def ^:const PCT_RE #"^(\d*(?:\.\d*)?)%$")
+
+(defn round [num]
+  "Round number to the nearest int"
+  (if (float? num) (Math/round num) num))
+
+(s/defn first-second-of-date :- LocalDateTime [date :- LocalDate]
   (.atStartOfDay date))
 
-(s/defn last-second-of-date [date :- LocalDate]
+(s/defn last-second-of-date :- LocalDateTime [date :- LocalDate]
   (.atTime date 23 59 59))
 
 (s/defn beginning-of-next-day [datetime :- LocalDateTime]
@@ -37,13 +51,30 @@
   ;; Google Calendar has minutes resolutions
   (.until (:start-time event) (:end-time event) ChronoUnit/MINUTES))
 
-(defn task-id->minutes
+(defn pcts-to-minutes
+  ([total-minutes pct]
+   (round (* pct total-minutes)))
+  ([total-minutes]
+   (partial pcts-to-minutes total-minutes)))
+
+(defn hours-to-minutes [hours-mins]
+  (let [[_ hours-str mins-str] (re-find HOURS_MINS_RE hours-mins)
+        hours (if (nil? hours-str) 0 (read-string hours-str))
+        mins (if (nil? mins-str) 0 (read-string mins-str))]
+    (+ (pcts-to-minutes 60 hours) (round mins))))
+
+(defn pct-strs-to-num
+  [pct-str]
+  (let [[_ pct] (re-find PCT_RE pct-str)]
+    (/ (Double/parseDouble pct) 100)))
+
+(defn task-id->minutes-from-pcts
   "Multiply the values of task-id->pcts by the minutes argument,
   creating a map from task id to minutes according to the percentages
   defined in task-id->pcts. Resulting values are rounded to the nearest
   minute."
   [task-id->pcts minutes]
-  (reduce-kv #(assoc %1 %2 (Math/round (* %3 minutes))) {} task-id->pcts))
+  (reduce-kv #(assoc %1 %2 (round (* %3 minutes))) {} task-id->pcts))
 
 (defn move-to-time
   "Move the event to the specified time"
@@ -90,31 +121,29 @@
                     :source-id TC_SOURCE_ID
                     :task-type (keyword task-id)}))
 
-(defn add-events-at-end [[events latest-event task-minutes]]
-  (if (empty? task-minutes)
-    events
-    (let [start-time (:end-time latest-event)
-          [task-id minutes] (first task-minutes)
-          event (event-from-task-minutes start-time minutes task-id)
-          new-events (cons event events)]
-      (add-events-at-end [new-events event (rest task-minutes)]))))
+;; TODO refactor the below into minimum required functions
 
-(defn fill-day-by-percents [events task-id->pcts hours]
-  (cond
-    (< 1.0 (reduce + (vals task-id->pcts)))
-    (throw (Exception. (format "Invalid task percentages: %s" task-id->pcts)))
+(defn add-events-after
+  ([task-id->minutes events latest-event]
+   (if (empty? task-id->minutes)
+     events
+     (let [start-time (:end-time latest-event)
+           [task-id minutes] (first task-id->minutes)
+           event (event-from-task-minutes start-time minutes task-id)
+           new-events (cons event events)]
+       (add-events-after (rest task-id->minutes) new-events event))))
 
-    (> hours 15) ; TODO breaks when combined with setting the earliest event to 9am
-    (throw (Exception. (format "Too many hours worked: %d " hours)))
+  ([task-id->minutes events]
+   (let [latest-event (reduce later-event events)]
+     (add-events-after task-id->minutes events latest-event))))
 
-    :else
-    (let [minutes-worked (* hours 60)
-          total-duration (reduce + (map event-duration-minutes events))
-          minutes-remaining (- minutes-worked total-duration)
-          sorted-events (sort-by :start-time events)]
-      (if-not (pos? minutes-remaining)
-        sorted-events
-        (let [task-minutes (task-id->minutes task-id->pcts minutes-remaining)
-              squeezed-events (reduce slam-to-earliest [] sorted-events)
-              latest-event (reduce later-event squeezed-events)]
-          (add-events-at-end [squeezed-events latest-event task-minutes]))))))
+(defn add-minutes-to-day [task-id->minutes events]
+  (add-events-after task-id->minutes events))
+
+(defn add-pcts-to-day [task-id->pcts minutes-worked events]
+  (let [total-duration (reduce + (map event-duration-minutes events))
+        minutes-remaining (- minutes-worked total-duration)]
+    (if-not (pos? minutes-remaining)
+      events
+      (let [task-id->minutes (fmap (pcts-to-minutes minutes-remaining) task-id->pcts)]
+        (add-events-after task-id->minutes events)))))
