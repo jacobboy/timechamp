@@ -17,8 +17,8 @@
            java.time.format.DateTimeFormatter
            timecop.schema.CanonicalEvent))
 
-(def APP_NAME "timecop")
-(def SOURCE_GC :gc)
+(def ^:const APP_NAME "timecop")
+(def ^:const SOURCE_GC :gc)
 
 (defn get-oauth-creds [scopes secrets-loc data-store-dir-loc]
   (let [stream (io/input-stream secrets-loc)

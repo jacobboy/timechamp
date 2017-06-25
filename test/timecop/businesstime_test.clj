@@ -150,10 +150,10 @@
       (is (= mock-canonical-events-overnight-split
              (split-event-at-midnight mock-canonical-event-overnight-whole))))))
 
-(deftest test-task-id->minutes
+(deftest test-task-id->minutes-from-pcts
   (testing "Test that the task-id->percentage map is multiplied by the minutes correctly "
     (is (= {123 27 234 22 345 51}
-           (task-id->minutes {123 0.272 234 0.222 345 0.506} 100)))))
+           (task-id->minutes-from-pcts {123 0.272 234 0.222 345 0.506} 100)))))
 
 (deftest test-move-to-time
   (testing "Test an event is correctly moved"
@@ -215,14 +215,14 @@
         (is (= [moved-event-correct event event-2]
                (slam-to-earliest events event)))))))
 
-(deftest test-add-events-at-end
+(deftest test-add-events-after
   (testing "Events are added from a map of task to minutes"
     (let [event-1 (mock-event (LocalDateTime/of 2017 5 10 10 0) 30)
           event-2 (mock-event (LocalDateTime/of 2017 5 10 13 30) 60)
           events [event-2 event-1]
           task-duration-1 180
           task-duration-2 120
-          task-minutes {"task-1" task-duration-1 "task-2" task-duration-2}
+          task-id->minutes {"task-1" task-duration-1 "task-2" task-duration-2}
           post-event-1 (mock-event (LocalDateTime/of 2017 5 10 14 30)
                                    task-duration-1
                                    :task-type :task-1)
@@ -231,26 +231,44 @@
                                    :task-type :task-2)
           post-events (list post-event-2 post-event-1 event-2 event-1)]
       (is (= post-events
-             (add-events-at-end [events event-2 task-minutes]))))))
+             (add-events-after task-id->minutes events event-2))))))
 
-(deftest test-fill-day-by-percents
-  (testing "Test that the workday is correctly filled according to the provided percentages"
+(deftest test-add-minutes-to-day
+  (testing "Test that the correct events are added according to the provided minutes"
     (testing "with reasonable values"
       (let [event-1 (mock-event (LocalDateTime/of 2017 5 10 10 0) 30)
             event-2 (mock-event (LocalDateTime/of 2017 5 10 13 30) 60)
             events [event-2 event-1]
-            hours 9.5
+            [t1 t2 t3] [60 120 300]
+            task-id->minutes {"task-1" t1 "task-2" t2 "task-3" t3}
+            created-event-1 (mock-event (LocalDateTime/of 2017 5 10 14 30)
+                                        t1
+                                        :task-type :task-1)
+            created-event-2 (mock-event (LocalDateTime/of 2017 5 10 15 30)
+                                        t2
+                                        :task-type :task-2)
+            created-event-3 (mock-event (LocalDateTime/of 2017 5 10 17 30)
+                                        t3
+                                        :task-type :task-3)]
+        (is (= [created-event-3 created-event-2 created-event-1 event-2 event-1]
+               (add-minutes-to-day task-id->minutes events)))))))
+
+(deftest test-add-pcts-to-day
+  (testing "Test that the correct amount of time is filled according to the provided percentages"
+    (testing "with reasonable values"
+      (let [event-1 (mock-event (LocalDateTime/of 2017 5 10 10 0) 30)
+            event-2 (mock-event (LocalDateTime/of 2017 5 10 13 30) 60)
+            events [event-2 event-1]
+            minutes-worked (* 9.5 60)
             task-id->pcts {"task-1" 0.125 "task-2" 0.25 "task-3" 0.625}
-            post-event-1 (mock-event (LocalDateTime/of 2017 5 10 9 0) 30)
-            post-event-2 (mock-event (LocalDateTime/of 2017 5 10 9 30) 60)
-            created-event-1 (mock-event (LocalDateTime/of 2017 5 10 10 30)
+            created-event-1 (mock-event (LocalDateTime/of 2017 5 10 14 30)
                                         60.0
                                         :task-type :task-1)
-            created-event-2 (mock-event (LocalDateTime/of 2017 5 10 11 30)
+            created-event-2 (mock-event (LocalDateTime/of 2017 5 10 15 30)
                                         120.0
                                         :task-type :task-2)
-            created-event-3 (mock-event (LocalDateTime/of 2017 5 10 13 30)
+            created-event-3 (mock-event (LocalDateTime/of 2017 5 10 17 30)
                                         300.0
                                         :task-type :task-3)]
-        (is (= [created-event-3 created-event-2 created-event-1 post-event-2 post-event-1]
-               (fill-day-by-percents events task-id->pcts hours)))))))
+        (is (= [created-event-3 created-event-2 created-event-1 event-2 event-1]
+               (add-pcts-to-day task-id->pcts minutes-worked events)))))))
