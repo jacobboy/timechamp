@@ -45,9 +45,10 @@ e.g. `1h30m`, `1.5h`, `90m`. Percentages are specified as `X%`, e.g. `25%`. Thus
 the list of `TASK_TIME_PAIR...` might look like
 `1234 1h 2345 30m 3456 80% 4567 20%`.
 
-Hours, minutes, and percents may be floats and need not sum to 1; it is valid to
-specify tasks take up only a fraction of the unallocated time.  Percentages
-greater than 1 are also respected for some reason.
+Hours and minutes may be floats, but will be rounded to the nearest minute.
+Percents may be floats and need not sum to 1; it is valid to specify tasks take
+up only a fraction of the unallocated time.  Percentages greater than 1 are also
+respected for some reason.
 
 ### Named arguments:
 
@@ -91,7 +92,7 @@ Create events for weekends.
 ## Getting Started
 
 The easiest way to run this is to download the
-[latest jar file from Github](https://github.com/jacobboy/releases)
+[latest jar file from Github](https://github.com/jacobboy/timecop/releases)
 and run
 
 ``` shell

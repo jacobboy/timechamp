@@ -128,17 +128,17 @@
      (->CanonicalEvent start-time-2 end-time-2 description source source-id task-type)
      (->CanonicalEvent start-time-3 end-time-3 description source source-id task-type)]))
 
-(deftest test-beginning-of-next-day
+(deftest beginning-of-next-day-test
   (testing "Returns 00:00:00:000 on the next day"
     (is (= (LocalDateTime/of 2015 9 1 0 0)
            (beginning-of-next-day (LocalDateTime/of 2015 8 31 4 15))))))
 
-(deftest test-end-of-day
+(deftest end-of-day-test
   (testing "Returns 23:59:59 on the same day"
     (is (= (LocalDateTime/of 2019 12 31 23 59 59)
            (end-of-day (LocalDateTime/of 2019 12 31 0 1))))))
 
-(deftest test-split-event-at-midnight
+(deftest split-event-at-midnight-test
   (testing "Properly splitting at midnight"
     (testing "with a simple canonical event"
       (is (= [mock-canonical-event-simple]
@@ -150,12 +150,29 @@
       (is (= mock-canonical-events-overnight-split
              (split-event-at-midnight mock-canonical-event-overnight-whole))))))
 
-(deftest test-task-id->minutes-from-pcts
+(deftest hours-to-minutes-test
+  (testing
+      "Transform input hours-and-minutes strings into the number of minutes"
+    (is (= 0 (hours-to-minutes "1h30")))
+    (is (= 0 (hours-to-minutes "0h0m")))
+    (is (= 90 (hours-to-minutes "1h30m")))
+    (is (= 90 (hours-to-minutes "90m")))
+    (is (= 120 (hours-to-minutes "1h60m")))
+    (is (= 261 (hours-to-minutes "2.25h10.9m")))))
+
+(deftest hours-to-minutes-test
+  (testing "Transform input percent strings into a number"
+    (is (= 0.0 (pct-strs-to-num "30")))
+    (is (= 0.0 (pct-strs-to-num "0%")))
+    (is (= 0.3 (pct-strs-to-num "30%")))
+    (is (= 0.3012 (pct-strs-to-num "30.12%")))))
+
+(deftest task-id->minutes-from-pcts-test
   (testing "Test that the task-id->percentage map is multiplied by the minutes correctly "
     (is (= {123 27 234 22 345 51}
            (task-id->minutes-from-pcts {123 0.272 234 0.222 345 0.506} 100)))))
 
-(deftest test-move-to-time
+(deftest move-to-time-test
   (testing "Test an event is correctly moved"
     (testing "forward in time"
       (let [new-start (LocalDateTime/of 2018 6 11 23 1)
@@ -181,7 +198,7 @@
   (let [end-time (.plusMinutes start-time duration)]
     (->CanonicalEvent start-time end-time description source source-id task-type)))
 
-(deftest test-slam-to-earliest
+(deftest slam-to-earliest-test
   (testing "Dig through the ditches and burn through the witches"
     (testing "and slam through the back of my dragula"
       (let [duration 30
@@ -215,45 +232,26 @@
         (is (= [moved-event-correct event event-2]
                (slam-to-earliest events event)))))))
 
-(deftest test-add-events-after
+(deftest add-minutes-to-day-test
   (testing "Events are added from a map of task to minutes"
     (let [event-1 (mock-event (LocalDateTime/of 2017 5 10 10 0) 30)
           event-2 (mock-event (LocalDateTime/of 2017 5 10 13 30) 60)
           events [event-2 event-1]
-          task-duration-1 180
-          task-duration-2 120
-          task-id->minutes {"task-1" task-duration-1 "task-2" task-duration-2}
-          post-event-1 (mock-event (LocalDateTime/of 2017 5 10 14 30)
-                                   task-duration-1
-                                   :task-type :task-1)
-          post-event-2 (mock-event (LocalDateTime/of 2017 5 10 17 30)
-                                   task-duration-2
-                                   :task-type :task-2)
-          post-events (list post-event-2 post-event-1 event-2 event-1)]
-      (is (= post-events
-             (add-events-after task-id->minutes events event-2))))))
+          [t1 t2 t3] [60 120 300]
+          task-id->minutes {"task-1" t1 "task-2" t2 "task-3" t3}
+          created-event-1 (mock-event (LocalDateTime/of 2017 5 10 14 30)
+                                      t1
+                                      :task-type :task-1)
+          created-event-2 (mock-event (LocalDateTime/of 2017 5 10 15 30)
+                                      t2
+                                      :task-type :task-2)
+          created-event-3 (mock-event (LocalDateTime/of 2017 5 10 17 30)
+                                      t3
+                                      :task-type :task-3)]
+      (is (= [created-event-3 created-event-2 created-event-1 event-2 event-1]
+             (add-minutes-to-day task-id->minutes events))))))
 
-(deftest test-add-minutes-to-day
-  (testing "Test that the correct events are added according to the provided minutes"
-    (testing "with reasonable values"
-      (let [event-1 (mock-event (LocalDateTime/of 2017 5 10 10 0) 30)
-            event-2 (mock-event (LocalDateTime/of 2017 5 10 13 30) 60)
-            events [event-2 event-1]
-            [t1 t2 t3] [60 120 300]
-            task-id->minutes {"task-1" t1 "task-2" t2 "task-3" t3}
-            created-event-1 (mock-event (LocalDateTime/of 2017 5 10 14 30)
-                                        t1
-                                        :task-type :task-1)
-            created-event-2 (mock-event (LocalDateTime/of 2017 5 10 15 30)
-                                        t2
-                                        :task-type :task-2)
-            created-event-3 (mock-event (LocalDateTime/of 2017 5 10 17 30)
-                                        t3
-                                        :task-type :task-3)]
-        (is (= [created-event-3 created-event-2 created-event-1 event-2 event-1]
-               (add-minutes-to-day task-id->minutes events)))))))
-
-(deftest test-add-pcts-to-day
+(deftest add-pcts-to-day-test
   (testing "Test that the correct amount of time is filled according to the provided percentages"
     (testing "with reasonable values"
       (let [event-1 (mock-event (LocalDateTime/of 2017 5 10 10 0) 30)
