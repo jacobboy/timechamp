@@ -10,6 +10,8 @@
 
 (def ^:const TC_URL_TEMPLATE "https://www.timecamp.com/third_party/api/%s/format/json/api_token/%s")
 
+(def ^:const TASK_IDS {:meeting "9238867"})
+
 (defn tc-get-url [endpoint api-token]
   (format TC_URL_TEMPLATE endpoint api-token))
 
