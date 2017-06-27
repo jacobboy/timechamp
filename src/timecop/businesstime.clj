@@ -162,7 +162,7 @@
            [task-id minutes] (first task-id->minutes)
            event (event-from-task-minutes start-time minutes task-id)
            new-events (cons event events)]
-       (add-events-after (rest task-id->minutes) new-events event)))))
+       (add-minutes-to-day (rest task-id->minutes) new-events event)))))
 
 (defn add-pcts-to-day
   "Create back-to-back events with events taking the percentage of
@@ -175,4 +175,4 @@
       events
       (let [task-id->minutes
               (fmap (pcts-to-minutes minutes-remaining) task-id->pcts)]
-        (add-events-after task-id->minutes events)))))
+        (add-minutes-to-day task-id->minutes events)))))
