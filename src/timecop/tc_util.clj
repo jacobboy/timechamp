@@ -5,7 +5,8 @@
             [clojure.data.json :as json]
             [clojure.string :as str]
             [clojure.walk :refer [keywordize-keys]]
-            [schema.core :as s])
+            [schema.core :as s]
+            [timecop.schema :refer :all])
   (:import java.time.format.DateTimeFormatter
            java.time.LocalDateTime
            timecop.schema.CanonicalEvent))
@@ -27,54 +28,70 @@
     (json/read-str (:body response))))
 
 (defn get-user-id-from-email [api-token email]
-  (let [users (get-users api-token)
-        matching-users (filter #(= email (% "email")) users)]
-    ((first matching-users) "user_id")))
+  (-> (get-users api-token)
+      (->> (filter #(= email (% "email"))))
+      first
+      (get "user_id")))
 
 (defn ^:private parent-task
   "Return the parent task, or nil if no parent."
   [task task-id->task]
   (-> task
       :parent_id
-      task-id->task
-      #_:name))
+      task-id->task))
 
-(defn ^:private format-parent->tasks
-  [parent tasks]
-  (let [task-formatter #(str "    " (:name %) " - " (:task_id %))
-        formatted-tasks (map task-formatter tasks)
-        parent-line (str (:name parent) " - " (:task_id parent))
-        all-lines (cons parent-line formatted-tasks)]
-    (str/join \newline all-lines)))
-
-(defn ^:private format-task-id->task
+(defn ^:private parent->tasks-from-task-id->task
   [task-id->task]
-  (let [task-id->task (fmap keywordize-keys task-id->task)
-        tasks (vals task-id->task)
-        parent->tasks (group-by #(parent-task % task-id->task) tasks)
-        parent->children (dissoc parent->tasks nil)
-        name-comparator #(compare (:name %1) (:name %2))
-        sorted-parent->children (into
-                                 (sorted-map-by name-comparator)
-                                 parent->children)]
-    (str/join
-     \newline
-     (map
-      #(apply format-parent->tasks %)
-      sorted-parent->children))))
+  (letfn [(drop-parent [parent->tasks] (dissoc parent->tasks nil))
+          (compare-by-name [taskl taskr] (compare (:name taskl) (:name taskr)))]
+    (->> task-id->task
+         vals
+         (group-by #(parent-task % task-id->task))
+         drop-parent
+         (fmap (partial sort compare-by-name))
+         (into (sorted-map-by compare-by-name)))))
+
+(defn ^:private max-child-name-len [parent->tasks]
+  (->> parent->tasks
+       vals
+       flatten
+       (map :name)
+       (map count)
+       (apply max)))
+
+(defn ^:private format-parent->tasks [parent->tasks]
+  (let [child-len (max-child-name-len parent->tasks)
+        child-format-str (str "    %-" child-len "s    %s")
+        format-child #(format child-format-str (:name %) (:task_id %))
+
+        parent-len (+ 4 child-len)
+        parent-format-str (str "%-" parent-len "s    %s")
+        format-parent #(format parent-format-str (:name %) (:task_id %))
+
+        format-parent-children (fn [[parent children]]
+                                 (->> children
+                                      (map format-child)
+                                      (cons (format-parent parent))))]
+    (->> parent->tasks
+         (mapcat format-parent-children)
+         (str/join \newline))))
 
 (defn list-tasks
   "Calls TimeCamp's tasks API endpoint and parses the response, returning a map
   containing keys :ok? and :message. On success, :ok? is true, and :message is a
-  list of tasks and task ids formatted for print. On failure, :ok? is false and
-  :message contains the error provided by TimeCamp."
+  string containing tasks and task ids formatted for print. On failure, :ok? is
+  false and :message contains the error provided by TimeCamp."
   [api-token]
   (let [tasks-url (tc-get-url "tasks" api-token)
-        resp (client/get tasks-url {:throw-exceptions false})
-        ok? (< (:status resp) 300)
-        body (json/read-str (:body resp))]
+        {:keys [body status]} (client/get tasks-url {:throw-exceptions false})
+        ok? (< status 300)
+        body (json/read-str body)]
     (if ok?
-      {:message (format-task-id->task body) :ok? true}
+      {:message (->> body
+                     (fmap keywordize-keys)
+                     parent->tasks-from-task-id->task
+                     format-parent->tasks)
+       :ok? true}
       {:message body :ok? false})))
 
 (defn get-entries
