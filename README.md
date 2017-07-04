@@ -7,12 +7,16 @@ unallocated time.
 ## Usage
 
 ```
-java -jar timecop [-s START_DATE] [-e END_DATE] [--hours-worked HOURS]
-                  [-c CLIENT_SECRETS_FILE] [-d DATA_STORE_DIR] [-t TC_API_TOKEN]
-                  [-i CALENDAR_ID] [-w] [TASK_TIME_PAIR...]
+java -jar timecop fill-days [-s START_DATE] [-e END_DATE] [--hours-worked HOURS]
+                            [-c CLIENT_SECRETS_FILE] [-d DATA_STORE_DIR]
+                            [-t TC_API_TOKEN] [-i CALENDAR_ID] [-w]
+                            [TASK_TIME_PAIR...]
+
+java -jar timecop list-tasks [-t TC_API_TOKEN]
 ```
 
-## Description
+## fill-days
+### Description
 TimeCop will blindly shove Google calendar events into TimeCamp, and optionally
 create events to fill unallocated time. *Currently it keeps only durations from
 calendar events, throwing away specific start and end times by moving events to
@@ -28,8 +32,8 @@ You are required to have Google service account credentials, a TimeCamp API
 token, and knowledge of the somewhat hidden TimeCamp task IDs. These
 requirements are described in more detail their own sections below.
 
-## Arguments:
-### Positional arguments:
+### Arguments:
+#### Positional arguments:
 `TASK_TIME_PAIR...`  
 _Optional._  
 _Ex:_ `1234 1h 2345 1h30m 3456 80% 4567 20%`
@@ -50,7 +54,7 @@ Percents may be floats and need not sum to 1; it is valid to specify tasks take
 up only a fraction of the unallocated time.  Percentages greater than 1 are also
 respected for some reason.
 
-### Named arguments:
+#### Named arguments:
 
 `-s, --start-date START_DATE`  
 _Default: Current date_  
@@ -89,6 +93,15 @@ Create events for weekends.
 
 `-h, --help`  
 
+## list-tasks
+Prints TimeCamp tasks and task IDs available to the provided TimeCamp account.
+
+### Arguments
+#### Named arguments:
+`-t, --tc-api-token TC_API_TOKEN`  
+_Default:_ `$TC_API_TOKEN`  
+TimeCamp API token. See below for more information.
+
 ## Getting Started
 
 The easiest way to run this is to download the
@@ -96,37 +109,22 @@ The easiest way to run this is to download the
 and run
 
 ``` shell
-java -jar path/to/jar [ARGS..]
+java -jar path/to/jar <subcommand> [<args>]
 ```
-for example,
+e.g.
 ``` shell
-java -jar timecop.jar 9238 1h30m 8302 75m 8380 50% 8856 10%
+java -jar timecop.jar fill-days 9238 1h30m 8302 75m 8380 50% 8856 10%
 ```
 To run or build from source, install [leiningen](https://leiningen.org/), cd to
 the base of the repo, and execute
-`lein run -- [ARGS...]` to run or `lein uberjar` to package.
+`lein run -- <args>` to run or `lein uberjar` to package.
 
 ## Requirements
 ### Task IDs
-The easiest way to find a specific task ID is to make a GET request to
-TimeCamp's `entries` endpoint at
-`https://www.timecamp.com/third_party/api/entries/format/json/api_token/<api_token>/from/<yyyy-MM-dd>/to/<yyyy-MM-dd>/user_ids/<user_id>`
-formatting in your API token, user ID, and yyyy-MM-dd dates for a day where you
-have logged time under the task whose ID you're looking for.  The response will
-be a JSON list of dictionaries including keys for `task_id` and `name`; you can
-find the event where the `name` matches what you're looking for.
-
-To find your user ID for the above, query the `users` endpoint at
-`https://www.timecamp.com/third_party/api/user/format/json/api_token/<api_token>`
-and locate the entry with your email. A helper for this is coming.
-
-Alternatively, information about all TimeCamp task IDs can be found by making a
-get request to TimeCamp's tasks endpoint at
-`https://www.timecamp.com/third_party/api/tasks/format/json/api_token/<api_token>`.
-This returns a dictionary mapping task IDs to dictionaries containing task
-information. These are more difficult to manually parse as the list is longer
-and the dictionaries contain much more information, but the principle of finding
-of finding the `name` you're looking for is the same.
+A list of all task IDs available to your account is available through the
+`list-tasks` subcommand. Provide your API token via the `-t` option or
+TC_API_TOKEN environment variable.  This subcommand prints a human readable
+mapping of tasks and IDs.
 
 ### Credentials
 

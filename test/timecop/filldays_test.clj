@@ -1,7 +1,9 @@
-(ns timecop.core-test
+(ns timecop.filldays-test
   (:require [clojure.test :refer :all]
-            [timecop.core :refer :all])
+            [timecop.filldays :as filldays])
   (:import java.time.LocalDate))
+
+(def weekend-filter #'filldays/weekend-filter)
 
 (deftest weekend-filter-test
   (testing "Filter weekend days when required"
