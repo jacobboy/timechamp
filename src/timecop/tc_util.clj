@@ -15,13 +15,13 @@
 
 (def ^:const TASK_IDS {:meeting "9238867"})
 
-(defn tc-get-url [endpoint api-token]
+(defn ^:private tc-get-url [endpoint api-token]
   (format TC_URL_TEMPLATE endpoint api-token))
 
-(defn tc-post-url [endpoint api-token]
+(defn ^:private tc-post-url [endpoint api-token]
   (format TC_URL_TEMPLATE endpoint api-token))
 
-(defn get-users [api-token]
+(defn ^:private get-users [api-token]
   (let [url (tc-get-url "users" api-token)
         response (client/get url)]
     (json/read-str (:body response))))
@@ -64,9 +64,13 @@
       sorted-parent->children))))
 
 (defn list-tasks
+  "Calls TimeCamp's tasks API endpoint and parses the response, returning a map
+  containing keys :ok? and :message. On success, :ok? is true, and :message is a
+  list of tasks and task ids formatted for print. On failure, :ok? is false and
+  :message contains the error provided by TimeCamp."
   [api-token]
   (let [tasks-url (tc-get-url "tasks" api-token)
-        resp (client/get tasks-url)
+        resp (client/get tasks-url {:throw-exceptions false})
         ok? (< (:status resp) 300)
         body (json/read-str (:body resp))]
     (if ok?
@@ -74,7 +78,7 @@
       {:message body :ok? false})))
 
 (defn get-entries
-  "Get TimeCamp entries within a date range.  Date formats must be yyyy-MM-dd"
+  "Get TimeCamp entries within a date range. Date formats must be yyyy-MM-dd"
   [api-token user-id from to]
   (let [url (str/join "/"
                       [(tc-get-url "entries" api-token)
@@ -84,15 +88,15 @@
         response (client/get url)]
     (json/read-str (:body response))))
 
-(s/defn localdatetime-to-tc-date :- String
+(s/defn ^:private localdatetime-to-tc-date :- String
   [localdatetime :- LocalDateTime]
   (.format localdatetime DateTimeFormatter/ISO_LOCAL_DATE))
 
-(s/defn localdatetime-to-tc-time :- String
+(s/defn ^:private localdatetime-to-tc-time :- String
   [localdatetime :- LocalDateTime]
   (.format localdatetime DateTimeFormatter/ISO_LOCAL_TIME))
 
-(s/defn canonical-event-to-tc-event
+(s/defn ^:private canonical-event-to-tc-event
   [{:keys [start-time end-time description
            source source-id task-type]} :- CanonicalEvent]
   {:date (localdatetime-to-tc-date start-time)
@@ -109,17 +113,22 @@
    ;; fix.
    })
 
-(defn post-tc-entry [api-token data]
+(defn ^:private post-tc-entry [api-token data]
   (client/post
    (tc-post-url "entries" api-token)
    {:form-params data :content-type :x-www-form-urlencoded :throw-exceptions false}))
 
 (s/defn summary-post-event-to-tc
+  "Format the event for TimeCamp and post. Returns a summary of the response containing
+  :ok?      - was the post successful?
+  :status   - response status
+  :body     - response body
+  :tc-event - the TimeCamp object derived from the provided event"
   [tc-api-token :- String event :- CanonicalEvent]
   (let [tc-event (canonical-event-to-tc-event event)
         {:keys [status body] :as response}
           (post-tc-entry tc-api-token tc-event)]
-    {:ok (< status 300)
+    {:ok? (< status 300)
      :status status
      :body (json/read-str body)
      :tc-event tc-event}))

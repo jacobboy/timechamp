@@ -4,6 +4,9 @@
   (:import  [java.time LocalDateTime ZoneId]
             com.google.api.client.util.DateTime))
 
+(def localdatetime-to-gc-datetime #'timecop.gc-util/localdatetime-to-gc-datetime)
+(def gc-datetime-to-localdatetime #'timecop.gc-util/gc-datetime-to-localdatetime)
+
 (deftest localdatetime-to-gc-datetime-test
   (testing "LocalDateTime transforms to Google DateTime appropriately"
     (is (= (DateTime. "2011-12-03T10:15:30+01:00")

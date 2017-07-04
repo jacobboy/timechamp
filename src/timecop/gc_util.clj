@@ -2,25 +2,26 @@
   (:require [clojure.java.io :as io]
             [schema.core :as s]
             [timecop.schema :refer [canonical-event]])
-  (:import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp
-           com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver
-           [com.google.api.client.googleapis.auth.oauth2 GoogleAuthorizationCodeFlow
-            GoogleClientSecrets
-            GoogleAuthorizationCodeFlow$Builder]
-           com.google.api.client.googleapis.javanet.GoogleNetHttpTransport
-           com.google.api.client.json.jackson2.JacksonFactory
-           com.google.api.client.util.DateTime
-           com.google.api.client.util.store.FileDataStoreFactory
-           [com.google.api.services.calendar Calendar Calendar$Builder CalendarScopes]
-           [com.google.api.services.calendar.model Event EventDateTime]
-           [java.time Instant LocalDateTime ZoneId]
-           java.time.format.DateTimeFormatter
-           timecop.schema.CanonicalEvent))
+  (:import
+   com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp
+   com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver
+   [com.google.api.client.googleapis.auth.oauth2 GoogleAuthorizationCodeFlow
+    GoogleClientSecrets
+    GoogleAuthorizationCodeFlow$Builder]
+   com.google.api.client.googleapis.javanet.GoogleNetHttpTransport
+   com.google.api.client.json.jackson2.JacksonFactory
+   com.google.api.client.util.DateTime
+   com.google.api.client.util.store.FileDataStoreFactory
+   [com.google.api.services.calendar Calendar Calendar$Builder CalendarScopes]
+   [com.google.api.services.calendar.model Event EventDateTime]
+   [java.time Instant LocalDateTime ZoneId]
+   java.time.format.DateTimeFormatter
+   timecop.schema.CanonicalEvent))
 
 (def ^:const APP_NAME "timecop")
 (def ^:const SOURCE_GC :gc)
 
-(defn get-oauth-creds [scopes secrets-loc data-store-dir-loc]
+(defn ^:private get-oauth-creds [scopes secrets-loc data-store-dir-loc]
   (let [stream (io/input-stream secrets-loc)
         stream-reader (io/reader stream)
         http-transport (GoogleNetHttpTransport/newTrustedTransport)
@@ -41,7 +42,8 @@
     (println (format "Cred saved to %s" data-store-dir-loc))
     credential))
 
-(defn get-calendar-service ^Calendar [secrets-loc data-store-dir]
+(defn ^:private get-calendar-service ^Calendar
+  [secrets-loc data-store-dir]
   (let [scopes [CalendarScopes/CALENDAR_READONLY]
         cred (get-oauth-creds scopes secrets-loc data-store-dir)
         http-transport (GoogleNetHttpTransport/newTrustedTransport)
@@ -51,7 +53,8 @@
      (.setApplicationName APP_NAME)
      .build)))
 
-(defn timezone-for-calendar ^ZoneId [^Calendar calendar-service ^String calendar-id]
+(defn ^:private timezone-for-calendar ^ZoneId
+  [^Calendar calendar-service ^String calendar-id]
   (-> calendar-service
       .calendars
       (.get calendar-id)
@@ -59,16 +62,18 @@
       .getTimeZone
       ZoneId/of))
 
-(defn localdatetime-to-gc-datetime ^DateTime [^LocalDateTime localdatetime ^ZoneId zone]
+(defn ^:private localdatetime-to-gc-datetime ^DateTime
+  [^LocalDateTime localdatetime ^ZoneId zone]
   (let [zoneddatetime (.atZone localdatetime zone)]
     (DateTime. (.format zoneddatetime DateTimeFormatter/ISO_OFFSET_DATE_TIME))))
 
-(defn gc-datetime-to-localdatetime ^LocalDateTime [^DateTime datetime]
+(defn ^:private gc-datetime-to-localdatetime ^LocalDateTime [^DateTime datetime]
   (-> (Instant/ofEpochMilli (.getValue datetime))
       (.atZone (ZoneId/of (subs (.toStringRfc3339 datetime) 23)))
       (.toLocalDateTime)))
 
-(s/defn gc-event-to-canonical-event :- CanonicalEvent [gc-event]
+(s/defn ^:private gc-event-to-canonical-event :- CanonicalEvent
+  [gc-event]
   (let [start (.. gc-event getStart getDateTime)
         end (.. gc-event getEnd getDateTime)]
     (canonical-event {:start-time (gc-datetime-to-localdatetime start)
@@ -78,11 +83,12 @@
                       :source-id (. gc-event getId)
                       :task-type :meeting})))
 
-(s/defn get-events :- [CanonicalEvent] [secrets-loc :- String
-                                        data-store-dir :- String
-                                        calendar-id :- String
-                                        time-min :- LocalDateTime
-                                        time-max :- LocalDateTime]
+(s/defn get-events :- [CanonicalEvent]
+  [secrets-loc :- String
+   data-store-dir :- String
+   calendar-id :- String
+   time-min :- LocalDateTime
+   time-max :- LocalDateTime]
   (let [service (get-calendar-service secrets-loc data-store-dir)
         zone (timezone-for-calendar service calendar-id)]
     (->

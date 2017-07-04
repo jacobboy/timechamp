@@ -30,10 +30,10 @@
 (s/defn last-second-of-date :- LocalDateTime [date :- LocalDate]
   (.atTime date 23 59 59))
 
-(s/defn beginning-of-next-day [datetime :- LocalDateTime]
+(s/defn ^:private beginning-of-next-day [datetime :- LocalDateTime]
   (-> datetime (.toLocalDate) (.plusDays 1) first-second-of-date))
 
-(s/defn end-of-day [datetime :- LocalDateTime]
+(s/defn ^:private end-of-day [datetime :- LocalDateTime]
   (-> datetime (.toLocalDate) last-second-of-date))
 
 (s/defn split-event-at-midnight :- [CanonicalEvent]
@@ -48,13 +48,13 @@
             event-rest (assoc event :start-time (beginning-of-next-day start-time))]
         (cons event-first (split-event-at-midnight event-rest))))))
 
-(defn event-duration-minutes
+(defn ^:private event-duration-minutes
   "Length in minutes of the provided event.  Minutes also happens to be
   the highest resolution of Google Calendar."
   [event]
   (.until (:start-time event) (:end-time event) ChronoUnit/MINUTES))
 
-(defn pcts-to-minutes
+(defn ^:private pcts-to-minutes
   "Return the number of minutes corresponding to the provided percent of total
   minutes, rounded to the nearest minute. If passed only a single argument,
   returns this function with that argument partially applied as the total
@@ -83,7 +83,7 @@
       (/ (Double/parseDouble pct) 100)
       0.0)))
 
-(defn task-id->minutes-from-pcts
+(defn ^:private task-id->minutes-from-pcts
   "Multiply the values of task-id->pcts by the minutes argument,
   creating a map from task id to minutes according to the percentages
   defined in task-id->pcts. Resulting values are rounded to the nearest
@@ -91,7 +91,7 @@
   [task-id->pcts minutes]
   (reduce-kv #(assoc %1 %2 (round (* %3 minutes))) {} task-id->pcts))
 
-(defn move-to-time
+(defn ^:private move-to-time
   "Move the event to the specified time"
   [event start-time]
   (let [duration (event-duration-minutes event)
@@ -100,13 +100,13 @@
     (assoc event :start-time start-time :end-time end-time)))
 
 ;; TODO bad fn name
-(defn workday-start
+(defn ^:private workday-start
   "Return a LocalDateTime representing the start of the workday on the day of
   the event"
   [event]
   (LocalDateTime/of (.toLocalDate (:start-time event)) (LocalTime/of 9 0 0)))
 
-(defn move-to-start
+(defn ^:private move-to-start
   "Move an event backwards to the start of the workday on the same day,
   but return event unchanged if the event is prior to the workday start."
   [event]
@@ -115,7 +115,7 @@
       (move-to-time event start-of-workday)
       event)))
 
-(defn later-event
+(defn ^:private later-event
   "Return the event which *ends* latest."
   [event-a event-b]
   (if (<= 0 (compare (:end-time event-a) (:end-time event-b)))
@@ -137,7 +137,7 @@
           start-time (:end-time latest-event)]
       (cons (move-to-time event start-time) events))))
 
-(defn event-from-task-minutes
+(defn ^:private event-from-task-minutes
   "New CanonicalEvent of length minutes, task task-id, and beginning at
   start-time, with default source and source-id."
   [start-time minutes task-id]

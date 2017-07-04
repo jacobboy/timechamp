@@ -130,13 +130,15 @@
 
 (deftest beginning-of-next-day-test
   (testing "Returns 00:00:00:000 on the next day"
-    (is (= (LocalDateTime/of 2015 9 1 0 0)
-           (beginning-of-next-day (LocalDateTime/of 2015 8 31 4 15))))))
+    (let [beginning-of-next-day #'timecop.businesstime/beginning-of-next-day]
+      (is (= (LocalDateTime/of 2015 9 1 0 0)
+             (beginning-of-next-day (LocalDateTime/of 2015 8 31 4 15)))))))
 
 (deftest end-of-day-test
   (testing "Returns 23:59:59 on the same day"
-    (is (= (LocalDateTime/of 2019 12 31 23 59 59)
-           (end-of-day (LocalDateTime/of 2019 12 31 0 1))))))
+    (let [end-of-day #'timecop.businesstime/end-of-day]
+      (is (= (LocalDateTime/of 2019 12 31 23 59 59)
+             (end-of-day (LocalDateTime/of 2019 12 31 0 1)))))))
 
 (deftest split-event-at-midnight-test
   (testing "Properly splitting at midnight"
@@ -169,25 +171,27 @@
 
 (deftest task-id->minutes-from-pcts-test
   (testing "Test that the task-id->percentage map is multiplied by the minutes correctly "
-    (is (= {123 27 234 22 345 51}
-           (task-id->minutes-from-pcts {123 0.272 234 0.222 345 0.506} 100)))))
+    (let [task-id->minutes-from-pcts #'timecop.businesstime/task-id->minutes-from-pcts]
+      (is (= {123 27 234 22 345 51}
+             (task-id->minutes-from-pcts {123 0.272 234 0.222 345 0.506} 100))))))
 
 (deftest move-to-time-test
   (testing "Test an event is correctly moved"
-    (testing "forward in time"
-      (let [new-start (LocalDateTime/of 2018 6 11 23 1)
-            new-event (assoc mock-canonical-event-over-two-nights-whole
-                             :start-time new-start
-                             :end-time (LocalDateTime/of 2018 6 13 9 1))]
-        (is (= new-event
-               (move-to-time mock-canonical-event-over-two-nights-whole new-start)))))
-    (testing "backwards in time"
-      (let [new-start (LocalDateTime/of 2016 4 8 21 59)
-            new-event (assoc mock-canonical-event-over-two-nights-whole
-                             :start-time new-start
-                             :end-time (LocalDateTime/of 2016 4 10 7 59))]
-        (is (= new-event
-               (move-to-time mock-canonical-event-over-two-nights-whole new-start)))))))
+    (let [move-to-time #'timecop.businesstime/move-to-time]
+      (testing "forward in time"
+        (let [new-start (LocalDateTime/of 2018 6 11 23 1)
+              new-event (assoc mock-canonical-event-over-two-nights-whole
+                               :start-time new-start
+                               :end-time (LocalDateTime/of 2018 6 13 9 1))]
+          (is (= new-event
+                 (move-to-time mock-canonical-event-over-two-nights-whole new-start))))
+        (testing "backwards in time"
+          (let [new-start (LocalDateTime/of 2016 4 8 21 59)
+                new-event (assoc mock-canonical-event-over-two-nights-whole
+                                 :start-time new-start
+                                 :end-time (LocalDateTime/of 2016 4 10 7 59))]
+            (is (= new-event
+                   (move-to-time mock-canonical-event-over-two-nights-whole new-start)))))))))
 
 (defn mock-event
   [start-time duration & {:keys [description source source-id task-type] :or
@@ -201,7 +205,8 @@
 (deftest slam-to-earliest-test
   (testing "Dig through the ditches and burn through the witches"
     (testing "and slam through the back of my dragula"
-      (let [duration 30
+      (let [workday-start #'timecop.businesstime/workday-start
+            duration 30
             start-time (LocalDateTime/of 2017 5 10 22 0)
             event (mock-event start-time duration)
             moved-start-time (workday-start event)
