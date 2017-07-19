@@ -40,10 +40,7 @@
   (if include-weekends?
     (constantly true)
     (s/fn [date :- LocalDate]
-      (not (contains? WEEKEND (.getDayOfWeek date)))))
-  #_(if (contains? WEEKEND (.getDayOfWeek))
-    include-weekends?
-    true))
+      (not (contains? WEEKEND (.getDayOfWeek date))))))
 
 (s/defn ^:private days-between-start-end :- [LocalDate]
   "Return a sequence of dates between start-date and end-date, inclusive.
@@ -56,6 +53,7 @@
      (list start-date)
      (let [tomorrow (.plusDays start-date 1)]
        (cons start-date (days-between-start-end tomorrow end-date)))))
+
   ([start-date :- LocalDate end-date :- LocalDate include-weekends? :- Boolean]
    (filter (weekend-filter include-weekends?)
            (days-between-start-end start-date end-date))))
@@ -109,14 +107,10 @@
   ;; aren't passed to fmap), so map a function that takes and returns [key
   ;; new-value] and turn those back into a map
   (let
-      [#_kv-map #_(fn [f m] (into (empty m) (for [[k v] m] [k (f k v)])))
-       partial-add-times-to-day (add-user-times-to-day task-id->minutes
+      [partial-add-times-to-day (add-user-times-to-day task-id->minutes
                                                        task-id->pcts
-                                                       minutes-worked)
-       #_add-user-times       #_(fn [[day events]]
-                                  [day (partial-add-times-to-day day events)])]
+                                                       minutes-worked)]
     (->> day->events
-         #_(map add-user-times)
          (map #([(first %)
                  (apply partial-add-times-to-day %)]))
          (into {})))
@@ -134,7 +128,7 @@
   )
 
 (defn transfer-gc-to-tc
-  "Do all the things."
+  "Pull events from Google Calendar and process them into TimeCamp"
   [{:keys [start-date
            end-date
            calendar-id

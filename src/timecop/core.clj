@@ -1,12 +1,11 @@
 (ns timecop.core
   (:gen-class)
   (:require [clojure.string :as str]
-            [clojure.tools.cli :as tools.cli]
             [timecop.cli :as cli]
             [timecop.listtasks :as listtasks]
             [timecop.simplefillcli :as simplefill]))
 
-(defn usage
+(defn ^:private usage
   [subcommand-names options-summary]
   (->>
    ["Usage:"
@@ -22,16 +21,16 @@
    flatten
    (str/join \newline)))
 
-(def subcommand-options-specs
+(def ^:private subcommand-options-specs
   [["-h" "--help" "Show this help and exit."]])
 
-(def subcommand-name->subcommand
+(def ^:private subcommand-name->subcommand
   {"fill-days" simplefill/fill-days
    "list-tasks" listtasks/list-tasks})
 
-(defn parse-args [args]
+(defn ^:private parse-args [args]
   (let [{:keys [arguments options errors summary]}
-        (tools.cli/parse-opts args subcommand-options-specs :in-order true)
+        (cli/parse-opts args subcommand-options-specs :in-order true)
         [subcommand-name & subcommand-args] arguments
         subcommand (subcommand-name->subcommand subcommand-name)]
     (cond
@@ -45,7 +44,8 @@
         {:exit-message exit-message :ok? ok?})
 
       :else
-      {:exit-message (usage summary) :ok? false})))
+      {:exit-message (usage (keys subcommand-name->subcommand) summary)
+       :ok? false})))
 
 (defn -main [& args]
   (let [{:keys [exit-message ok?]} (parse-args args)]

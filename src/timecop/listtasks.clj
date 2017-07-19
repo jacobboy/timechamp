@@ -3,7 +3,7 @@
             [timecop.tc-util :as tc]
             [clojure.string :as str]))
 
-(defn usage
+(defn ^:private usage
   [options-summary]
   (->>
    ["Usage:"
@@ -15,7 +15,7 @@
     "Please refer to the README at for more information"]
    (str/join \newline) ))
 
-(def option-specs
+(def ^:private option-specs
   [["-t" "--tc-api-token TC_API_TOKEN"
     "TimeCamp API token. See README for more information."
     :default (System/getenv "TC_API_TOKEN") :default-desc "$TC_API_TOKEN"]
