@@ -53,4 +53,6 @@
 
 (defn exit [status msg] (println msg) (System/exit status))
 
-(def parse-opts cli/parse-opts)
+(def parse-opts
+  "See tools.cli/parse-opts"
+  cli/parse-opts)

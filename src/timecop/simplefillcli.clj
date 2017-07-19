@@ -6,7 +6,6 @@
   (:import [java.time DayOfWeek LocalDate]))
 
 (def ^:const INPUT_RE (re-pattern (format "%s\n|%s" bt/HOURS_MINS_RE bt/PCT_RE)))
-(def ^:const WEEKEND_DAYS #{DayOfWeek/SATURDAY DayOfWeek/SUNDAY})
 
 (def ^:private option-specs
   [["-s" "--start-date START_DATE" "Start date (inclusive) in yyyy-MM-dd format"
@@ -141,7 +140,11 @@
       :else
       {:args (assoc options :arguments arguments)})))
 
-(defn fill-days [args]
+(defn fill-days
+  "Attempt to pull events from Google Calendar and process them into TimeCamp.
+  Return a map containing :exit-message, for print on exit, and :ok?, a boolean
+  indicating success or failure."
+  [args]
   (let [{:keys [args exit-message ok?]} (validate-args args)]
     (if exit-message
       {:exit-message exit-message :ok? ok?}

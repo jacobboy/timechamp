@@ -123,7 +123,7 @@ the base of the repo, and execute
 ### Task IDs
 A list of all task IDs available to your account is available through the
 `list-tasks` subcommand. Provide your API token via the `-t` option or
-TC_API_TOKEN environment variable.  This subcommand prints a human readable
+`TC_API_TOKEN` environment variable.  This subcommand prints a human readable
 mapping of tasks and IDs.
 
 ### Credentials
@@ -144,8 +144,8 @@ match this application.
    client ID".
 2. For a new project, it'll have you configure the consent screen.  You'll have
    to provide the name that'll be shown on the OAuth consent screen, the rest of
-   the form is optional. It is not important what you choose. Click "Save".
-3. Select Other as the application type. It'll give you a pop-up with your
+   the form is optional. Click "Save".
+3. Select "Other" as the application type. It'll give you a pop-up with your
    client ID and secret, which you need not save. Click through and you'll be
    returned to the Credentials page.
 4. Download the client secrets file by hitting the download button for the
