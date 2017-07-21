@@ -70,7 +70,8 @@ Hours worked per day. Must be less than 15, as events are moved to begin at 9am.
 
 `-c, --client-secrets-file CLIENT_SECRETS_FILE`  
 _Default:_ `$TIMECOP_SECRETS_FILE`  
-Path to Google client secrets JSON file. See below for more information.
+Path to Google client secrets JSON file. See the 
+[Google Credentials section](#google-credentials) for more information.
 
 `-d, --data-store-dir DATA_STORE_DIR`  
 _Default:_ `$TIMECOP_CREDENTIALS_DIR`  
@@ -81,7 +82,8 @@ it is cleaned up.
 
 `-t, --tc-api-token TC_API_TOKEN`  
 _Default:_ `$TC_API_TOKEN`  
-TimeCamp API token. See below for more information.
+TimeCamp API token. See the [TimeCamp API token section](#timecamp-api-token)
+for more information.
 
 `-i, --calendar-id CALENDAR_ID`  
 _Default:_ `"primary"`  

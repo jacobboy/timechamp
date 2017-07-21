@@ -84,6 +84,13 @@
                       :task-type :meeting})))
 
 (s/defn get-events :- [CanonicalEvent]
+  "Retrieve events from Google Calendar.
+  Arguments:
+    secrets-loc    Path to the secrets file for Google OAuth.
+    data-store-dir Path to the directory in which to store OAuth creds.
+    calendar-id    ID of the calendar to pull events from.
+    time-min       Beginning day and time.
+    time-max       Ending day and time."
   [secrets-loc :- String
    data-store-dir :- String
    calendar-id :- String

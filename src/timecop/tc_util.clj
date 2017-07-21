@@ -16,6 +16,13 @@
 
 (def ^:const TASK_IDS {:meeting "9238867"})
 
+(def TCDate s/Str)
+
+(def TCTime s/Str)
+
+(def TCEvent
+  {:date TCDate :start_time TCTime :end_time TCTime :note s/Str :task_id s/Str})
+
 (defn ^:private tc-get-url [endpoint api-token]
   (format TC_URL_TEMPLATE endpoint api-token))
 
@@ -95,25 +102,25 @@
       {:message body :ok? false})))
 
 (defn get-entries
-  "Get TimeCamp entries within a date range. Date formats must be yyyy-MM-dd"
-  [api-token user-id from to]
+  "Get TimeCamp entries within a date range. Date formats must be yyyy-MM-dd."
+  [api-token user-id from-date to-date]
   (let [url (str/join "/"
                       [(tc-get-url "entries" api-token)
-                       "from" from
-                       "to" to
+                       "from" from-date
+                       "to" to-date
                        "user_ids" user-id])
         response (client/get url)]
     (json/read-str (:body response))))
 
-(s/defn ^:private localdatetime-to-tc-date :- String
+(s/defn ^:private localdatetime-to-tc-date :- TCDate
   [localdatetime :- LocalDateTime]
   (.format localdatetime DateTimeFormatter/ISO_LOCAL_DATE))
 
-(s/defn ^:private localdatetime-to-tc-time :- String
+(s/defn ^:private localdatetime-to-tc-time :- TCDate
   [localdatetime :- LocalDateTime]
   (.format localdatetime DateTimeFormatter/ISO_LOCAL_TIME))
 
-(s/defn ^:private canonical-event-to-tc-event
+(s/defn ^:private canonical-event-to-tc-event :- TCEvent
   [{:keys [start-time end-time description
            source source-id task-type]} :- CanonicalEvent]
   {:date (localdatetime-to-tc-date start-time)
@@ -133,10 +140,14 @@
 (defn ^:private post-tc-entry [api-token data]
   (client/post
    (tc-post-url "entries" api-token)
-   {:form-params data :content-type :x-www-form-urlencoded :throw-exceptions false}))
+   {:form-params data
+    :content-type :x-www-form-urlencoded
+    :throw-exceptions false}))
 
 (s/defn summary-post-event-to-tc
-  "Format the event for TimeCamp and post. Returns a summary of the response containing
+  :- {:ok? s/Bool :status s/Num :body {s/Any s/Any} :tc-event TCEvent}
+  "Format the event for TimeCamp and post. Returns a summary of the response
+  containing
   :ok?      - was the post successful?
   :status   - response status
   :body     - response body

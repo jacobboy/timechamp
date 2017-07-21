@@ -1,5 +1,6 @@
-(ns timecop.simplefillcli
+(ns timecop.filldayscli
   (:require [clojure.string :as str]
+            [schema.core :as s]
             [timecop.businesstime :as bt]
             [timecop.cli :as cli]
             [timecop.filldays :refer [transfer-gc-to-tc]])
@@ -45,7 +46,7 @@
     :default "primary"]
 
    ["-w" "--include-weekends" "Create events for weekends."
-    :id :include-weekends?]
+    :id :include-weekends? :default false]
 
    ["-h" "--help"]])
 
@@ -78,7 +79,7 @@
    "Absolute times are specifed as hours and/or minutes in the form
    `XhYm`, e.g. `1h30m`, `1.5h`, `90m`. Percentages are specified as
    `X%`, e.g. `25%`.  Thus the list of TASK_TIME_PAIR... might look like"
-    "`1234 1h 2345 30m 3456 80% 4567 20%`."
+   "`1234 1h 2345 30m 3456 80% 4567 20%`."
    "Hours, minutes, and percents may be floats. Percents need not sum to 1; it
    is valid to specify tasks take up only a fraction of the unallocated
    time. Percentages greater than 1 are also respected for some reason."])
@@ -121,7 +122,8 @@
   should exit (with a error message, and optional ok status), or a map
   indicating the action the program should take and the options provided."
   [cli-args]
-  (let [{:keys [arguments options errors summary]}
+  (let [cli-args (or cli-args [])
+        {:keys [arguments options errors summary]}
         (cli/parse-opts cli-args option-specs :summary-fn cli/summary-fn)]
     (cond
       (:help options) ; help => exit OK with usage summary
@@ -140,14 +142,35 @@
       :else
       {:args (assoc options :arguments arguments)})))
 
-(defn fill-days
+(s/defn fill-days :- {:exit-message s/Str :ok? s/Bool}
   "Attempt to pull events from Google Calendar and process them into TimeCamp.
   Return a map containing :exit-message, for print on exit, and :ok?, a boolean
   indicating success or failure."
-  [args]
-  (let [{:keys [args exit-message ok?]} (validate-args args)]
+  [args :- (s/maybe [s/Str])]
+  (let [{exit-message :exit-message
+         ok? :ok?
+         ;; this got verbose because I wanted a simple definition for
+         ;; transfer-gc-to-gc, while still using Schema.  Could be I
+         ;; just need to learn schema better.
+         args :args} (validate-args args)
+        {:keys [start-date
+                end-date
+                calendar-id
+                client-secrets-file
+                data-store-dir
+                tc-api-token
+                hours-worked
+                include-weekends?
+                arguments]} args]
     (if exit-message
       {:exit-message exit-message :ok? ok?}
-      (do
-        (transfer-gc-to-tc args)
-        {:exit-message "Transferred successfully" :ok? true}))))
+      (let [{:keys [message ok?]} (transfer-gc-to-tc start-date
+                                                     end-date
+                                                     calendar-id
+                                                     client-secrets-file
+                                                     data-store-dir
+                                                     tc-api-token
+                                                     hours-worked
+                                                     include-weekends?
+                                                     arguments)]
+        {:exit-message message :ok? ok?}))))

@@ -22,10 +22,10 @@
   [arguments]
   (let [args-map (apply hash-map arguments) ; create pairs {id->arg...}
         grouped-args (group-by pct-pair? args-map) ; {bool->[[id arg]...]}
-        grouped-args-maps (fmap #(into {} %) grouped-args) ; {bool->{id->arg}}
-        {pre-task-id->minutes false
-         pre-task-id->pcts true} grouped-args-maps]
-    {:task-id->minutes (fmap bt/hours-to-minutes pre-task-id->minutes)
+        ;; grouped-args-maps (fmap #(into {} %) grouped-args) ; {bool->{id->arg}}
+        pre-task-id->minutes (into {} (grouped-args false))
+        pre-task-id->pcts (into {} (grouped-args true))]
+    {:task-id->minutes (fmap bt/hours-str-to-minutes pre-task-id->minutes)
      :task-id->pcts (fmap bt/pct-strs-to-num pre-task-id->pcts)}))
 
 (s/defn ^:private event-day :- LocalDate
@@ -44,7 +44,7 @@
 
 (s/defn ^:private days-between-start-end :- [LocalDate]
   "Return a sequence of dates between start-date and end-date, inclusive.
-  Optionally exclude any weekend days according to the `include-weekends?`
+  Optionally exclude any weekend days according to the third `include-weekends?`
   argument if provided."
   ([start-date :- LocalDate end-date :- LocalDate]
    ;; there's literally got to be a better way,
@@ -79,9 +79,8 @@
 
 (defn ^:private add-user-times-to-day
   "Creates events on the provided date according to the supplied times and
-  returns a new list of events with the new ones added. Moves the provided
-  events to the beginning of the day, though hopefully this will change in the
-  future.
+  returns a new list of events with new events added. Moves the provided events
+  to the beginning of the day, though hopefully this will change in the future.
   When provided the two user time arguments and minutes worked, returns this
   function with those arguments partially applied"
 
@@ -106,14 +105,12 @@
   ;; requires date. We can't use fmap because the dates are the map keys (which
   ;; aren't passed to fmap), so map a function that takes and returns [key
   ;; new-value] and turn those back into a map
-  (let
-      [partial-add-times-to-day (add-user-times-to-day task-id->minutes
-                                                       task-id->pcts
-                                                       minutes-worked)]
-    (->> day->events
-         (map #([(first %)
-                 (apply partial-add-times-to-day %)]))
-         (into {})))
+  (let [partial-add-times-to-day (add-user-times-to-day task-id->minutes
+                                                        task-id->pcts
+                                                        minutes-worked)]
+        (->> day->events
+             (map (fn [[k v]] [k (partial-add-times-to-day k v)]))
+             (into {})))
   #_(->>
      events
      (mapcat bt/split-event-at-midnight)
@@ -127,19 +124,32 @@
      flatten)
   )
 
-(defn transfer-gc-to-tc
-  "Pull events from Google Calendar and process them into TimeCamp"
-  [{:keys [start-date
-           end-date
-           calendar-id
-           client-secrets-file
-           data-store-dir
-           tc-api-token
-           hours-worked
-           include-weekends?
-           arguments]}]
+(s/defn transfer-gc-to-tc :- {:message s/Str :ok? s/Bool}
+  "Pull events from Google Calendar and process them into TimeCamp.
+  Arguments:
+    start-date          First date to pull events from.
+    end-date            Last date to pull events from.
+    calendar-id         ID of the calendar to pull events from.
+    client-secrets-file Path to the secrets file for Google OAuth
+    data-store-dir      Path to the directory in which to store OAuth creds
+    tc-api-token        API token for TimeCamp
+    hours-worked        Number of hours worked each day
+    include-weekends?   Boolean indicating whether to process weekend events.
+    arguments           Sequence of unparsed Task ID/Time tuples
+
+  Return a map containing :message, describing how many tasks failed and
+  succeeded, and :ok?, false if any tasks failed."
+  [start-date :- LocalDate
+   end-date :- LocalDate
+   calendar-id :- s/Str
+   client-secrets-file :- s/Str
+   data-store-dir :- s/Str
+   tc-api-token :- s/Str
+   hours-worked :- s/Num
+   include-weekends? :- s/Bool
+   arguments :- [s/Str]]
   (let [{:keys [task-id->minutes task-id->pcts]}
-          (task-id->time-from-arguments arguments)
+        (task-id->time-from-arguments arguments)
 
         minutes-worked (bt/round (* hours-worked 60))
 
@@ -162,13 +172,15 @@
 
         all-events (flatten (vals day->filled-events))
 
-        ;; map, doesn't appear we can post multiple events in one request
+        ;; map, doesn't appear we can batch post events
         ;; TODO rate limit?
         posted-days (map #(tc/summary-post-event-to-tc tc-api-token %)
                          all-events)
 
-        {successes true failures false} (group-by :ok posted-days)]
+        {successes true failures false} (group-by :ok? posted-days)]
 
     ;; TODO log failures as they happen, or quit on error
     (when (some? failures) (json/pprint failures))
-    (printf "%d successes, %d failures\n" (count successes) (count failures))))
+    {:message
+     (format "%d successes, %d failures" (count successes) (count failures))
+     :ok? (empty? failures)}))
