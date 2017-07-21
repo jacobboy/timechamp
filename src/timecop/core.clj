@@ -3,7 +3,7 @@
   (:require [clojure.string :as str]
             [timecop.cli :as cli]
             [timecop.listtasks :as listtasks]
-            [timecop.simplefillcli :as simplefill]))
+            [timecop.filldayscli :as simplefill]))
 
 (defn ^:private usage
   [subcommand-names options-summary]

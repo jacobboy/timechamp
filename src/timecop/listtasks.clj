@@ -1,7 +1,8 @@
 (ns timecop.listtasks
   (:require [timecop.cli :as cli]
             [timecop.tc-util :as tc]
-            [clojure.string :as str]))
+            [clojure.string :as str]
+            [schema.core :as s]))
 
 (defn ^:private usage
   [options-summary]
@@ -38,7 +39,8 @@
       :else
       {:args (assoc options :arguments arguments)})))
 
-(defn list-tasks [args]
+(s/defn list-tasks :- {:exit-message s/Str :ok? s/Bool}
+  [args :- [s/Str]]
   (let [{:keys [args exit-message ok?]} (validate-args args)]
     (if exit-message
       {:exit-message exit-message :ok? ok?}

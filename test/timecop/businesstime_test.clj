@@ -155,12 +155,12 @@
 (deftest hours-to-minutes-test
   (testing
       "Transform input hours-and-minutes strings into the number of minutes"
-    (is (= 0 (hours-to-minutes "1h30")))
-    (is (= 0 (hours-to-minutes "0h0m")))
-    (is (= 90 (hours-to-minutes "1h30m")))
-    (is (= 90 (hours-to-minutes "90m")))
-    (is (= 120 (hours-to-minutes "1h60m")))
-    (is (= 261 (hours-to-minutes "2.25h10.9m")))))
+    (is (= 0 (hours-str-to-minutes "1h30")))
+    (is (= 0 (hours-str-to-minutes "0h0m")))
+    (is (= 90 (hours-str-to-minutes "1h30m")))
+    (is (= 90 (hours-str-to-minutes "90m")))
+    (is (= 120 (hours-str-to-minutes "1h60m")))
+    (is (= 261 (hours-str-to-minutes "2.25h10.9m")))))
 
 (deftest hours-to-minutes-test
   (testing "Transform input percent strings into a number"

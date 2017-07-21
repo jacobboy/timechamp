@@ -46,7 +46,8 @@
       [event]
       (let [event-first (assoc event :end-time (end-of-day start-time))
             event-rest (assoc event :start-time (beginning-of-next-day start-time))]
-        (cons event-first (split-event-at-midnight event-rest))))))
+        (cons event-first (
+split-event-at-midnight event-rest))))))
 
 (defn ^:private event-duration-minutes
   "Length in minutes of the provided event.  Minutes also happens to be
@@ -64,20 +65,20 @@
   ([total-minutes pct]
    (round (* pct total-minutes))))
 
-(defn hours-to-minutes
+(s/defn hours-str-to-minutes :- s/Num
   "Parse the hours/minutes input string into the number of minutes it
   represents.  Returns 0 if the argument does not match the `XhYm` hours/minutes
   pattern."
-  [hours-mins]
+  [hours-mins :- s/Str]
   (let [[_ hours-str mins-str] (re-find HOURS_MINS_RE hours-mins)
         hours (if (nil? hours-str) 0 (read-string hours-str))
         mins (if (nil? mins-str) 0 (read-string mins-str))]
     (+ (pcts-to-minutes 60 hours) (round mins))))
 
-(defn pct-strs-to-num
+(s/defn pct-strs-to-num :- s/Num
   "Parse the percents input string into a number.  Returns 0 if the argument
   does not match the `X%` percent pattern."
-  [pct-str]
+  [pct-str :- s/Str]
   (let [[_ pct :as match] (re-find PCT_RE pct-str)]
     (if (some? match)
       (/ (Double/parseDouble pct) 100)
@@ -148,10 +149,11 @@
                     :source-id TC_SOURCE_ID
                     :task-type (keyword task-id)}))
 
-(defn add-minutes-to-day
+(s/defn add-minutes-to-day :- [CanonicalEvent]
   "Create back-to-back events from the provided task-id->minutes map, beginning
   immediately after the latest event provided, and return all events."
-  ([task-id->minutes events]
+  ([task-id->minutes :- {s/Str s/Num}
+    events :- [CanonicalEvent]]
    (let [latest-event (reduce later-event events)]
      (add-minutes-to-day task-id->minutes events latest-event)))
 
@@ -164,11 +166,13 @@
            new-events (cons event events)]
        (add-minutes-to-day (rest task-id->minutes) new-events event)))))
 
-(defn add-pcts-to-day
+(s/defn add-pcts-to-day :- [CanonicalEvent]
   "Create back-to-back events with events taking the percentage of
   minutes-worked specified in task-id->pcts map, beginning immediately after the
   latest event provided. Return all events."
-  [task-id->pcts minutes-worked events]
+  [task-id->pcts :- {s/Str s/Num}
+   minutes-worked :- s/Num
+   events :- [CanonicalEvent]]
   (let [total-duration (reduce + (map event-duration-minutes events))
         minutes-remaining (- minutes-worked total-duration)]
     (if-not (pos? minutes-remaining)
