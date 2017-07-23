@@ -1,12 +1,12 @@
 # TimeChamp
 
-An application for logging [TimeCamp](www.timecamp.com) time tracking
-from [Google Calendar](calendar.google.com) and automatically filling
-unallocated time.
+An application for logging [TimeCamp](https://www.timecamp.com) time tracking
+from [Google Calendar](https://www.calendar.google.com) and automatically
+filling unallocated time.
 
 ## Usage
 
-```
+```shell
 java -jar timechamp.jar fill-days [-s START_DATE] [-e END_DATE] 
                                   [--hours-worked HOURS]
                                   [-c GOOGLE_SECRETS_FILE] [-d DATA_STORE_DIR]
@@ -71,12 +71,12 @@ _Default:_ `8`
 Hours worked per day. Must be less than 15, as events are moved to begin at 9am.
 
 `-g, --gc-secrets-file GOOGLE_SECRETS_FILE`  
-_Default:_ `$TIMECHAMP_GOOGLE_SECRETS_FILE` or `~/.timechamp/google-secrets.json`  
+_Default:_ `$TIMECHAMP_GOOGLE_SECRETS_FILE` _or_ `~/.timechamp/google-secrets.json`  
 Path to Google client secrets JSON file. See the 
 [Google Credentials section](#google-credentials) for more information.
 
 `-d, --data-store-dir DATA_STORE_DIR`  
-_Default:_ `$TIMECHAMP_DATA_STORE_DIR` or `~/.timechamp/data/`  
+_Default:_ `$TIMECHAMP_DATA_STORE_DIR` _or_ `~/.timechamp/data/`  
 Path to the folder where the Google client will save its auth information
 between uses, allowing you to not need to reauthorize your Google credentials
 each use. This can be `/tmp` if desired, though you'll have to re-authorize as
@@ -178,5 +178,5 @@ Copyright © 2017 Jacob Boy
 
 The use and distribution terms for this software are covered by the
 Eclipse Public License 1.0
-(http://opensource.org/licenses/eclipse-1.0.php) which can be found in
+(https://opensource.org/licenses/eclipse-1.0.php) which can be found in
 the file LICENSE at the root of this distribution.
