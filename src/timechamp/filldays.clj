@@ -1,13 +1,13 @@
-(ns timecop.filldays
+(ns timechamp.filldays
   (:gen-class)
   (:require [clojure.algo.generic.functor :refer [fmap]]
             [clojure.data.json :as json]
             [schema.core :as s]
-            [timecop.businesstime :as bt]
-            [timecop.gc-util :as gc]
-            [timecop.tc-util :as tc])
+            [timechamp.businesstime :as bt]
+            [timechamp.gc-util :as gc]
+            [timechamp.tc-util :as tc])
   (:import [java.time DayOfWeek LocalDate]
-           timecop.schema.CanonicalEvent))
+           timechamp.schema.CanonicalEvent))
 
 ;; TODO with ^:const, get error:
 ;; Can't embed object in code, maybe print-dup not defined: SATURDAY
@@ -22,7 +22,7 @@
   [arguments]
   (let [args-map (apply hash-map arguments) ; create pairs {id->arg...}
         grouped-args (group-by pct-pair? args-map) ; {bool->[[id arg]...]}
-        ;; grouped-args-maps (fmap #(into {} %) grouped-args) ; {bool->{id->arg}}
+        ; grouped-args-maps (fmap #(into {} %) grouped-args) ; {bool->{id->arg}}
         pre-task-id->minutes (into {} (grouped-args false))
         pre-task-id->pcts (into {} (grouped-args true))]
     {:task-id->minutes (fmap bt/hours-str-to-minutes pre-task-id->minutes)
@@ -124,13 +124,13 @@
      flatten)
   )
 
-(s/defn transfer-gc-to-tc :- {:message s/Str :ok? s/Bool}
+(s/defn transfer-gc-to-tc :- {:message s/Str :ok? (s/maybe s/Bool)}
   "Pull events from Google Calendar and process them into TimeCamp.
   Arguments:
     start-date          First date to pull events from.
     end-date            Last date to pull events from.
     calendar-id         ID of the calendar to pull events from.
-    client-secrets-file Path to the secrets file for Google OAuth
+    gc-secrets-file     Path to the secrets file for Google OAuth
     data-store-dir      Path to the directory in which to store OAuth creds
     tc-api-token        API token for TimeCamp
     hours-worked        Number of hours worked each day
@@ -138,11 +138,11 @@
     arguments           Sequence of unparsed Task ID/Time tuples
 
   Return a map containing :message, describing how many tasks failed and
-  succeeded, and :ok?, false if any tasks failed."
+  succeeded, and optionally :ok?, true if all tasks succeeded."
   [start-date :- LocalDate
    end-date :- LocalDate
    calendar-id :- s/Str
-   client-secrets-file :- s/Str
+   gc-secrets-file :- s/Str
    data-store-dir :- s/Str
    tc-api-token :- s/Str
    hours-worked :- s/Num
@@ -160,7 +160,7 @@
 
         end-datetime (bt/last-second-of-date end-date)
 
-        events (gc/get-events client-secrets-file data-store-dir
+        events (gc/get-events gc-secrets-file data-store-dir
                               calendar-id start-datetime end-datetime)
 
         day->events (create-day-event-map events days-covered)
@@ -177,10 +177,12 @@
         posted-days (map #(tc/summary-post-event-to-tc tc-api-token %)
                          all-events)
 
-        {successes true failures false} (group-by :ok? posted-days)]
+        {successes true failures false} (group-by :ok? posted-days)
+
+        ok? (empty? failures)]
 
     ;; TODO log failures as they happen, or quit on error
-    (when (some? failures) (json/pprint failures))
+    (when (not ok?) (json/pprint failures))
     {:message
      (format "%d successes, %d failures" (count successes) (count failures))
-     :ok? (empty? failures)}))
+     :ok? ok?}))

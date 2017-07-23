@@ -1,11 +1,11 @@
-(ns timecop.gc-util-test
+(ns timechamp.gc-util-test
   (:require [clojure.test :refer :all]
-            [timecop.gc-util :refer :all])
+            [timechamp.gc-util :refer :all])
   (:import  [java.time LocalDateTime ZoneId]
             com.google.api.client.util.DateTime))
 
-(def localdatetime-to-gc-datetime #'timecop.gc-util/localdatetime-to-gc-datetime)
-(def gc-datetime-to-localdatetime #'timecop.gc-util/gc-datetime-to-localdatetime)
+(def localdatetime-to-gc-datetime #'timechamp.gc-util/localdatetime-to-gc-datetime)
+(def gc-datetime-to-localdatetime #'timechamp.gc-util/gc-datetime-to-localdatetime)
 
 (deftest localdatetime-to-gc-datetime-test
   (testing "LocalDateTime transforms to Google DateTime appropriately"

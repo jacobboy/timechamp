@@ -1,4 +1,4 @@
-(ns timecop.tc-util
+(ns timechamp.tc-util
   (:require [clj-http.client :as client]
             [clj-yaml.core :as yaml]
             [clojure.algo.generic.functor :refer [fmap]]
@@ -6,10 +6,10 @@
             [clojure.string :as str]
             [clojure.walk :refer [keywordize-keys]]
             [schema.core :as s]
-            [timecop.schema :refer :all])
+            [timechamp.schema :refer :all])
   (:import java.time.format.DateTimeFormatter
            java.time.LocalDateTime
-           timecop.schema.CanonicalEvent))
+           timechamp.schema.CanonicalEvent))
 
 (def ^:const TC_URL_TEMPLATE
   "https://www.timecamp.com/third_party/api/%s/format/json/api_token/%s")
@@ -91,10 +91,10 @@
   [api-token]
   (let [tasks-url (tc-get-url "tasks" api-token)
         {:keys [body status]} (client/get tasks-url {:throw-exceptions false})
-        ok? (< status 300)
-        body (json/read-str body)]
+        ok? (< status 300)]
     (if ok?
       {:message (->> body
+                     json/read-str
                      (fmap keywordize-keys)
                      parent->tasks-from-task-id->task
                      format-parent->tasks)

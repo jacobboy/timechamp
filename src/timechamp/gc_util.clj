@@ -1,7 +1,7 @@
-(ns timecop.gc-util
+(ns timechamp.gc-util
   (:require [clojure.java.io :as io]
             [schema.core :as s]
-            [timecop.schema :refer [canonical-event]])
+            [timechamp.schema :refer [canonical-event]])
   (:import
    com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp
    com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver
@@ -16,9 +16,9 @@
    [com.google.api.services.calendar.model Event EventDateTime]
    [java.time Instant LocalDateTime ZoneId]
    java.time.format.DateTimeFormatter
-   timecop.schema.CanonicalEvent))
+   timechamp.schema.CanonicalEvent))
 
-(def ^:const APP_NAME "timecop")
+(def ^:const APP_NAME "timechamp")
 (def ^:const SOURCE_GC :gc)
 
 (defn ^:private get-oauth-creds [scopes secrets-loc data-store-dir-loc]
