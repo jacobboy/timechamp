@@ -46,7 +46,7 @@ first create events from any tasks with absolute durations provided, then, if
 total event duration is less than hours worked, will portion the remaining time
 according to any percentages supplied.
 
-Absolute times are specifed as hours and/or minutes in the form `XhYm`,
+Absolute times are specified as hours and/or minutes in the form `XhYm`,
 e.g. `1h30m`, `1.5h`, `90m`. Percentages are specified as `X%`, e.g. `25%`. Thus
 the list of `TASK_TIME_PAIR...` might look like
 `1234 1h 2345 30m 3456 80% 4567 20%`.
@@ -72,15 +72,14 @@ Hours worked per day. Must be less than 15, as events are moved to begin at 9am.
 
 `-g, --gc-secrets-file GOOGLE_SECRETS_FILE`  
 _Default:_ `$TIMECHAMP_GOOGLE_SECRETS_FILE` _or_ `~/.timechamp/google-secrets.json`  
-Path to Google client secrets JSON file. See the 
-[Google Credentials section](#google-credentials) for more information.
+Path to Google client secrets JSON file. See the
+[Google OAuth section](#google-oauth) for more information.
 
 `-d, --data-store-dir DATA_STORE_DIR`  
 _Default:_ `$TIMECHAMP_DATA_STORE_DIR` _or_ `~/.timechamp/data/`  
 Path to the folder where the Google client will save its auth information
-between uses, allowing you to not need to reauthorize your Google credentials
-each use. This can be `/tmp` if desired, though you'll have to re-authorize as
-it is cleaned up. The path will be created if it does not exist.
+between uses. See the [Google OAuth section](#google-oauth) for more
+information.
 
 `-t, --tc-api-token TIMECAMP_API_TOKEN`  
 _Default:_ `$TIMECAMP_API_TOKEN`  
@@ -104,13 +103,13 @@ Prints TimeCamp tasks and task IDs available to the provided TimeCamp account.
 #### Named arguments:
 `-t, --tc-api-token TC_API_TOKEN`  
 _Default:_ `$TC_API_TOKEN`  
-TimeCamp API token. See below for more information.
+TimeCamp API token. See the [TimeCamp API token section](#timecamp-api-token)
 
 ## Getting Started
 
-The easiest way to run this is to download the
-[latest jar file from Github](https://github.com/jacobboy/timechamp/releases)
-(standalone version) and run
+The easiest way to run this is to download the standalone version of the
+[latest jar file from GitHub](https://github.com/jacobboy/timechamp/releases)
+and run
 
 ``` shell
 java -jar path/to/jar <subcommand> [<args>]
@@ -120,8 +119,8 @@ e.g.
 java -jar timechamp.jar fill-days 9238 1h30m 8302 75m 8380 50% 8856 10%
 ```
 To run or build from source, install [leiningen](https://leiningen.org/), cd to
-the base of the repo, and execute
-`lein run -- <args>` to run or `lein uberjar` to package.
+the base of the repo, and execute `lein run -- <args>` to run or `lein uberjar`
+to package.
 
 ## Requirements
 ### Task IDs
@@ -132,10 +131,20 @@ mapping of tasks and IDs.
 
 ### Credentials
 
-#### Google Credentials
-To retrieve data from your Google calendar, you will need an OAuth client ID
-from a project with access to the Calendar API. To obtain this, as of mid-2017
-you can:
+#### Google OAuth
+To retrieve data from your Google calendar, you will need an OAuth secrets file
+from a project with access to the Calendar API. If the path to this file is not
+supplied via CLI, TimeChamp will first check the `TIMECHAMP_GOOGLE_SECRETS_FILE`
+environment variable, then the default path `~/.timechamp/google-secrets.json`.
+
+Google OAuth also requires a directory in which to store authentication
+information between uses. This allows you to not need to reauthorize your Google
+credentials each use. If the path is not supplied via CLI, TimeChamp will first
+check the `TIMECHAMP_DATA_STORE_DIR` variable, then will use the default path
+`~/.timechamp/google-secrets.json`. The path used will be created if it does not
+exist.
+
+To obtain the OAuth secrets file, as of mid-2017 you can:
 
 ##### Create a new project
 Go to https://console.developers.google.com/projectselector/apis/credentials
@@ -166,10 +175,12 @@ Calendar API, click Enable at the top.
 
 
 #### TimeCamp API token
-Your TimeCamp API token is available at the bottom of the User Settings
-page. This can be provided to TimeChamp either via command line argument or read
-from the `TIMECAMP_API_TOKEN` environment variable. Note that this is
-`TIMECAMP_API_TOKEN` rather than `TIMECHAMP_API_TOKEN`.
+Your TimeCamp API token is available at the bottom of TimeCamp's User Settings
+page. 
+
+If not supplied via CLI, TimeChamp with use the the `TIMECAMP_API_TOKEN`
+environment variable. Note that this is `TIMECAMP_API_TOKEN` rather than
+`TIMECHAMP_API_TOKEN`.
 
 
 ## License
