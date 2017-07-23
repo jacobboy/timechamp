@@ -1,4 +1,4 @@
-(ns timecop.schema
+(ns timechamp.schema
   (:require [schema.core :as s])
   (:import java.time.LocalDateTime))
 

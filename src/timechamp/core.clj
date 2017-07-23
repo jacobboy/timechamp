@@ -1,9 +1,9 @@
-(ns timecop.core
+(ns timechamp.core
   (:gen-class)
   (:require [clojure.string :as str]
-            [timecop.cli :as cli]
-            [timecop.listtasks :as listtasks]
-            [timecop.filldayscli :as simplefill]))
+            [timechamp.cli :as cli]
+            [timechamp.listtasks :as listtasks]
+            [timechamp.filldayscli :as simplefill]))
 
 (defn ^:private usage
   [subcommand-names options-summary]

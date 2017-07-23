@@ -1,14 +1,14 @@
-(ns timecop.businesstime
+(ns timechamp.businesstime
   (:require [clojure.algo.generic.functor :refer [fmap]]
             [schema.core :as s]
-            [timecop.schema :refer [canonical-event]])
+            [timechamp.schema :refer [canonical-event]])
   (:import [java.time LocalDate LocalDateTime LocalTime]
            java.time.temporal.ChronoUnit
-           timecop.schema.CanonicalEvent))
+           timechamp.schema.CanonicalEvent))
 
-(def ^:const TC_DESCRIPTION  "Created by TimeCop")
-(def ^:const TC_SOURCE :timecop)
-(def ^:const TC_SOURCE_ID "TimeCop ID")
+(def ^:const TC_DESCRIPTION  "Created by TimeChamp")
+(def ^:const TC_SOURCE :timechamp)
+(def ^:const TC_SOURCE_ID "TimeChamp ID")
 
 (def ^:const HOURS_MINS_RE
   #"(?x)                    # allow embedded whitespace and comments

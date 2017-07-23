@@ -1,4 +1,4 @@
-(ns timecop.cli
+(ns timechamp.cli
   (:require [clojure.data :as data]
             [clojure.pprint :as pp]
             [clojure.string :as str]

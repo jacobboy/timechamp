@@ -1,6 +1,6 @@
-(ns timecop.filldays-test
+(ns timechamp.filldays-test
   (:require [clojure.test :refer :all]
-            [timecop.filldays :as filldays])
+            [timechamp.filldays :as filldays])
   (:import java.time.LocalDate))
 
 (def weekend-filter #'filldays/weekend-filter)

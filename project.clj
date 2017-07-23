@@ -1,4 +1,4 @@
-(defproject timecop "0.1.0-SNAPSHOT"
+(defproject timechamp "0.1.0-SNAPSHOT"
   :description "Populate Timecamp from Google calendar"
   ;; :url "http://example.com/FIXME"
   :license {:name "Eclipse Public License"
@@ -13,7 +13,7 @@
                  [org.clojure/tools.cli "0.3.5"]
                  [prismatic/schema "1.1.6"]
                  [org.clojure/algo.generic "0.1.2"]]
-  :main ^:skip-aot timecop.core
+  :main ^:skip-aot timechamp.core
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all}
              :dev {:source-paths ["dev"]}})

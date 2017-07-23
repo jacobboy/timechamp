@@ -1,9 +1,9 @@
-(ns timecop.businesstime-test
+(ns timechamp.businesstime-test
   (:require [clojure.test :refer :all]
             [clojure.test :as t]
             [schema.core :as s]
-            [timecop.businesstime :refer :all]
-            [timecop.schema :refer :all])
+            [timechamp.businesstime :refer :all]
+            [timechamp.schema :refer :all])
   (:import com.google.api.client.util.DateTime
            [com.google.api.services.calendar.model Event EventDateTime]
            java.time.LocalDateTime))
@@ -130,13 +130,13 @@
 
 (deftest beginning-of-next-day-test
   (testing "Returns 00:00:00:000 on the next day"
-    (let [beginning-of-next-day #'timecop.businesstime/beginning-of-next-day]
+    (let [beginning-of-next-day #'timechamp.businesstime/beginning-of-next-day]
       (is (= (LocalDateTime/of 2015 9 1 0 0)
              (beginning-of-next-day (LocalDateTime/of 2015 8 31 4 15)))))))
 
 (deftest end-of-day-test
   (testing "Returns 23:59:59 on the same day"
-    (let [end-of-day #'timecop.businesstime/end-of-day]
+    (let [end-of-day #'timechamp.businesstime/end-of-day]
       (is (= (LocalDateTime/of 2019 12 31 23 59 59)
              (end-of-day (LocalDateTime/of 2019 12 31 0 1)))))))
 
@@ -171,13 +171,13 @@
 
 (deftest task-id->minutes-from-pcts-test
   (testing "Test that the task-id->percentage map is multiplied by the minutes correctly "
-    (let [task-id->minutes-from-pcts #'timecop.businesstime/task-id->minutes-from-pcts]
+    (let [task-id->minutes-from-pcts #'timechamp.businesstime/task-id->minutes-from-pcts]
       (is (= {123 27 234 22 345 51}
              (task-id->minutes-from-pcts {123 0.272 234 0.222 345 0.506} 100))))))
 
 (deftest move-to-time-test
   (testing "Test an event is correctly moved"
-    (let [move-to-time #'timecop.businesstime/move-to-time]
+    (let [move-to-time #'timechamp.businesstime/move-to-time]
       (testing "forward in time"
         (let [new-start (LocalDateTime/of 2018 6 11 23 1)
               new-event (assoc mock-canonical-event-over-two-nights-whole
@@ -205,7 +205,7 @@
 (deftest slam-to-earliest-test
   (testing "Dig through the ditches and burn through the witches"
     (testing "and slam through the back of my dragula"
-      (let [workday-start #'timecop.businesstime/workday-start
+      (let [workday-start #'timechamp.businesstime/workday-start
             duration 30
             start-time (LocalDateTime/of 2017 5 10 22 0)
             event (mock-event start-time duration)
