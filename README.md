@@ -1,7 +1,7 @@
 # TimeChamp
 
 An application for logging [TimeCamp](https://www.timecamp.com) time tracking
-from [Google Calendar](https://www.calendar.google.com) and automatically
+from [Google Calendar](https://calendar.google.com) and automatically
 filling unallocated time.
 
 ## Usage
