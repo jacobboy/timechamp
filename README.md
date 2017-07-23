@@ -31,7 +31,7 @@ subdivides the free time according to any percentages supplied.
 
 You are required to have Google service account credentials, a TimeCamp API
 token, and knowledge of the somewhat hidden TimeCamp task IDs. These
-requirements are described in more detail their own sections below.
+requirements are described in more detail their in own sections below.
 
 ### Arguments:
 #### Positional arguments:
