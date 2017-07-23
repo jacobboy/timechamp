@@ -110,7 +110,7 @@ TimeCamp API token. See below for more information.
 
 The easiest way to run this is to download the
 [latest jar file from Github](https://github.com/jacobboy/timechamp/releases)
-and run
+(standalone version) and run
 
 ``` shell
 java -jar path/to/jar <subcommand> [<args>]
