@@ -41,10 +41,7 @@
 
    ["-d" "--data-store-dir DATA_STORE_DIR"
     "Path to the folder where the Google client will save its auth information
-     between uses, allowing you to not need to reauthorize your Google
-     credentials each use. This can be `/tmp` if desired, though you'll have to
-     re-authorize as it is cleaned up. The path will be created if it does not
-     exist."
+     between uses. See README for more information."
     :default (or (System/getenv "TIMECHAMP_DATA_STORE_DIR")
                  (expand-home "~/.timechamp/data/"))
     :default-desc "$TIMECHAMP_DATA_STORE_DIR or ~/.timechamp/data/"]
