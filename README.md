@@ -4,13 +4,47 @@ An application for logging [TimeCamp](https://www.timecamp.com) time tracking
 from [Google Calendar](https://calendar.google.com) and automatically
 filling unallocated time.
 
+## Getting Started
+
+The easiest way to run this is to download the standalone version of the
+[latest jar file from GitHub](https://github.com/jacobboy/timechamp/releases)
+and run
+
+``` shell
+java -jar path/to/jar <subcommand> [<args>]
+```
+e.g.
+``` shell
+java -jar timechamp.jar fill-days 9238 1h30m 8302 75m 8380 50% 8856 10%
+```
+To run or build from source, install [leiningen](https://leiningen.org/), cd to
+the base of the repo, and execute `lein run -- <args>` to run or `lein uberjar`
+to package.
+
+### Examples
+All examples assume credentials are supplied via environment variable, see below
+for details.
+
+``` shell
+java -jar timechamp.jar list-tasks
+```
+
+Lists all tasks with accompanying task ids.
+
+``` shell
+java -jar timechamp.jar fill-days
+```
+
+Transfers the current day's meetings into TimeCamp. Does not create any extra 
+events.
+
 ## Usage
 
 ```shell
 java -jar timechamp.jar fill-days [-s START_DATE] [-e END_DATE] 
-                                  [--hours-worked HOURS]
+                                  [--hours-worked HOURS] [-i CALENDAR_ID] [-w]
                                   [-c GOOGLE_SECRETS_FILE] [-d DATA_STORE_DIR]
-                                  [-t TIMECAMP_API_TOKEN] [-i CALENDAR_ID] [-w]
+                                  [-t TIMECAMP_API_TOKEN] 
                                   [TASK_TIME_PAIR...]
 
 java -jar timechamp.jar list-tasks [-t TIMECAMP_API_TOKEN]
@@ -70,6 +104,14 @@ End date (inclusive) in `yyyy-MM-dd` format
 _Default:_ `8`  
 Hours worked per day. Must be less than 15, as events are moved to begin at 9am.
 
+`-c, --calendar-id CALENDAR_ID`  
+_Default:_ `"primary"`  
+ID of the Google calendar to read events from. Unless you've created multiple
+calendars on the account and know which you want, the default is what you want.
+
+`-w, --include-weekends`  
+Create events for weekends.
+
 `-g, --gc-secrets-file GOOGLE_SECRETS_FILE`  
 _Default:_ `$TIMECHAMP_GOOGLE_SECRETS_FILE` _or_ `~/.timechamp/google-secrets.json`  
 Path to Google client secrets JSON file. See the
@@ -86,14 +128,6 @@ _Default:_ `$TIMECAMP_API_TOKEN`
 TimeCamp API token. See the [TimeCamp API token section](#timecamp-api-token)
 for more information.
 
-`-c, --calendar-id CALENDAR_ID`  
-_Default:_ `"primary"`  
-ID of the Google calendar to read events from. Unless you've created multiple
-calendars on the account and know which you want, the default is what you want.
-
-`-w, --include-weekends`  
-Create events for weekends.
-
 `-h, --help`  
 
 ## list-tasks
@@ -104,23 +138,6 @@ Prints TimeCamp tasks and task IDs available to the provided TimeCamp account.
 `-t, --tc-api-token TC_API_TOKEN`  
 _Default:_ `$TC_API_TOKEN`  
 TimeCamp API token. See the [TimeCamp API token section](#timecamp-api-token)
-
-## Getting Started
-
-The easiest way to run this is to download the standalone version of the
-[latest jar file from GitHub](https://github.com/jacobboy/timechamp/releases)
-and run
-
-``` shell
-java -jar path/to/jar <subcommand> [<args>]
-```
-e.g.
-``` shell
-java -jar timechamp.jar fill-days 9238 1h30m 8302 75m 8380 50% 8856 10%
-```
-To run or build from source, install [leiningen](https://leiningen.org/), cd to
-the base of the repo, and execute `lein run -- <args>` to run or `lein uberjar`
-to package.
 
 ## Requirements
 ### Task IDs

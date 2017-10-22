@@ -32,6 +32,15 @@
                "Hours worked must be less than 15."]
     :default 8]
 
+   ["-c" "--calendar-id CALENDAR_ID"
+    (str "ID of the Google calendar to read events from. Unless you've created "
+         "multiple calendars on the account and know which you want, the default "
+         "is what you want.")
+    :default "primary"]
+
+   ["-w" "--include-weekends" "Create events for weekends."
+    :id :include-weekends? :default false]
+
    ["-g" "--gc-secrets-file GOOGLE_SECRETS_FILE"
     "Path to Google client secrets JSON file. See README for more information."
     :default (or (System/getenv "TIMECHAMP_GOOGLE_SECRETS_FILE")
@@ -50,15 +59,6 @@
     "TimeCamp API token. See README for more information."
     :default (System/getenv "TIMECAMP_API_TOKEN")
     :default-desc "$TIMECAMP_API_TOKEN"]
-
-   ["-c" "--calendar-id CALENDAR_ID"
-    (str "ID of the Google calendar to read events from. Unless you've created "
-         "multiple calendars on the account and know which you want, the default "
-         "is what you want.")
-    :default "primary"]
-
-   ["-w" "--include-weekends" "Create events for weekends."
-    :id :include-weekends? :default false]
 
    ["-h" "--help"]])
 
@@ -89,9 +89,10 @@
 
 (defn ^:private usage [options-summary]
   (->> ["Usage: "
-        "  fill-days [-s START_DATE] [-e END_DATE] [--hours-worked HOURS]"
+        "  fill-days [-s START_DATE] [-e END_DATE]"
+        "            [--hours-worked HOURS] [-i CALENDAR_ID] [-w]"
         "            [-g GOOGLE_SECRETS_FILE] [-d DATA_STORE_DIR]"
-        "            [-t TIMECAMP_API_TOKEN] [-i CALENDAR_ID] [-w]"
+        "            [-t TIMECAMP_API_TOKEN]"
         "            [TASK_TIME_PAIR...]"
         ""
         "Positional arguments:"

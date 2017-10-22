@@ -2,8 +2,8 @@
   (:gen-class)
   (:require [clojure.string :as str]
             [timechamp.cli :as cli]
-            [timechamp.listtasks :as listtasks]
-            [timechamp.filldayscli :as simplefill]))
+            [timechamp.filldayscli :as simplefill]
+            [timechamp.listtasks :as listtasks]))
 
 (defn ^:private usage
   [subcommand-names options-summary]

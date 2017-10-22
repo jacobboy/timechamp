@@ -1,6 +1,6 @@
 (ns timechamp.tc-util
   (:require [clj-http.client :as client]
-            [clj-yaml.core :as yaml]
+            [yaml.core :as yaml]
             [clojure.algo.generic.functor :refer [fmap]]
             [clojure.data.json :as json]
             [clojure.string :as str]

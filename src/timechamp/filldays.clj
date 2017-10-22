@@ -124,6 +124,8 @@
      flatten)
   )
 
+;; TODO should abstract this up so that GC is just one of possibly
+;; many event providers
 (s/defn transfer-gc-to-tc :- {:message s/Str :ok? (s/maybe s/Bool)}
   "Pull events from Google Calendar and process them into TimeCamp.
   Arguments:
