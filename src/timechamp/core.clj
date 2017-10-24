@@ -22,7 +22,8 @@
    (str/join \newline)))
 
 (def ^:private subcommand-options-specs
-  [["-h" "--help" "Show this help and exit."]])
+  {:help
+   ["-h" nil "Show this help and exit."]})
 
 (def ^:private subcommand-name->subcommand
   {"fill-days" simplefill/fill-days
@@ -30,7 +31,7 @@
 
 (defn ^:private parse-args [args]
   (let [{:keys [arguments options errors summary]}
-        (cli/parse-opts args subcommand-options-specs :in-order true)
+        (cli/parse-opts args subcommand-options-specs)
         [subcommand-name & subcommand-args] arguments
         subcommand (subcommand-name->subcommand subcommand-name)]
     (cond

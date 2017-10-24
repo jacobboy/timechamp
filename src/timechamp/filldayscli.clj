@@ -4,63 +4,80 @@
             [schema.core :as s]
             [timechamp.businesstime :as bt]
             [timechamp.cli :as cli]
-            [timechamp.filldays :refer [transfer-gc-to-tc]])
-  (:import [java.time DayOfWeek LocalDate]))
+            [timechamp.config :as config]
+            [timechamp.eventsources :as sources]
+            [timechamp.filldays :refer [transfer-gc-to-tc]]
+            [timechamp.util :refer [expand-home]])
+  (:import java.time.LocalDate))
 
 (def ^:const INPUT_RE (re-pattern (format "%s\n|%s" bt/HOURS_MINS_RE bt/PCT_RE)))
 
-(defn expand-home [s]
-  (if (.startsWith s "~")
-    (clojure.string/replace-first s "~" (System/getProperty "user.home"))
-    s))
-
 (def ^:private option-specs
-  [["-s" "--start-date START_DATE" "Start date (inclusive) in yyyy-MM-dd format"
-    :parse-fn #(LocalDate/parse %) :default (LocalDate/now)
+  {:start-date
+   ["-s" "START_DATE" "Start date (inclusive) in yyyy-MM-dd format"
+    :parse-fn #(LocalDate/parse %)
+    (LocalDate/now)
     :default-desc "Current date"]
 
-   ["-e" "--end-date END_DATE" "End date (inclusive) in yyyy-MM-dd format"
-    :parse-fn #(LocalDate/parse %) :default (LocalDate/now)
+   :end-date
+   ["-e" "END_DATE" "End date (inclusive) in yyyy-MM-dd format"
+    :parse-fn #(LocalDate/parse %)
+    :default (LocalDate/now)
     :default-desc "Current date"]
 
-   [nil "--hours-worked HOURS"
+   :hours-worked
+   [nil "HOURS"
     (str "Hours worked per day. Must be less than 15, "
          "as events are moved to begin at 9am.")
-    :parse-fn #(. Double parseDouble %1)
-    :validate [#(< 0 % 15)
-               ;; Lame, >15 not compatible with 9:00 start of day
+    :parse-fn #(. Double parseDouble %)
+    :validate [#(< 0 % 15) ; Lame, >15 not compatible with 9:00 start of day
                "Hours worked must be less than 15."]
-    :default 8]
+    :default 8
+    :config? true]
 
-   ["-c" "--calendar-id CALENDAR_ID"
+   :include-weekends
+   ["-w" nil "Create events for weekends."
+    :id :include-weekends?
+    :config? true]
+
+   :data-store-dir
+   ["-d" "DATA_STORE_DIR"
+    (str "Path to the folder where the Google client will save its auth "
+         "information between uses. See README for more information.")
+    :default "~/.timechamp/data/"
+    :config? true]
+
+   :gc-meeting-id
+   ["-m" "MEETING_ID"
+    "TimeCamp ID to use for Google calendar events."
+    :parse-fn str
+    :config? true]
+
+   :gc-calendar-id
+   ["-i" "CALENDAR_ID"
     (str "ID of the Google calendar to read events from. Unless you've created "
          "multiple calendars on the account and know which you want, the default "
          "is what you want.")
-    :default "primary"]
+    :default "primary"
+    :config? true]
 
-   ["-w" "--include-weekends" "Create events for weekends."
-    :id :include-weekends? :default false]
-
-   ["-g" "--gc-secrets-file GOOGLE_SECRETS_FILE"
+   :gc-secrets-file
+   ["-g" "GOOGLE_SECRETS_FILE"
     "Path to Google client secrets JSON file. See README for more information."
-    :default (or (System/getenv "TIMECHAMP_GOOGLE_SECRETS_FILE")
-                 (expand-home "~/.timechamp/google-secrets.json"))
-    :default-desc (str "$TIMECHAMP_GOOGLE_SECRETS_FILE or "
-                       "~/.timechamp/google-secrets.json")]
+    :default "~/.timechamp/google-secrets.json"
+    :config? true]
 
-   ["-d" "--data-store-dir DATA_STORE_DIR"
-    "Path to the folder where the Google client will save its auth information
-     between uses. See README for more information."
-    :default (or (System/getenv "TIMECHAMP_DATA_STORE_DIR")
-                 (expand-home "~/.timechamp/data/"))
-    :default-desc "$TIMECHAMP_DATA_STORE_DIR or ~/.timechamp/data/"]
-
-   ["-t" "--tc-api-token TIMECAMP_API_TOKEN"
+   :tc-api-token
+   ["-t" "TIMECAMP_API_TOKEN"
     "TimeCamp API token. See README for more information."
-    :default (System/getenv "TIMECAMP_API_TOKEN")
-    :default-desc "$TIMECAMP_API_TOKEN"]
+    :config? true]
 
-   ["-h" "--help"]])
+   :config
+   ["-c" "CONFIG_FILE" "Path to config file."
+    :default config/DEFAULT_CONFIG_FILE_PATH]
+
+   :help
+   ["-h" nil "Show this help and exit."]})
 
 (def ^:private pos-args-summary-lines
   ["Optional."
@@ -90,8 +107,8 @@
 (defn ^:private usage [options-summary]
   (->> ["Usage: "
         "  fill-days [-s START_DATE] [-e END_DATE]"
-        "            [--hours-worked HOURS] [-i CALENDAR_ID] [-w]"
-        "            [-g GOOGLE_SECRETS_FILE] [-d DATA_STORE_DIR]"
+        "            [--hours-worked HOURS] [-w] [-d DATA_STORE_DIR]"
+        "            [-i CALENDAR_ID] [-g GOOGLE_SECRETS_FILE] "
         "            [-t TIMECAMP_API_TOKEN]"
         "            [TASK_TIME_PAIR...]"
         ""
@@ -117,30 +134,42 @@
      (filter first)
      (map second))))
 
-
-(defn ^:private create-dir-if-not-exists [dir]
-  [])
-
 ;; needed because tools.cli's validation does not run if default is used
 (defn ^:private paths-exist? [options]
   (let [opt->path (select-keys options [:gc-secrets-file #_:data-store-dir])]
     (->> opt->path
-         (filter (fn [[_ path]] (not (.exists (io/file path)))))
+         (filter (fn [[_ path]] (not (.exists (io/file (expand-home path))))))
          (map (fn [[opt path]] (str (name opt) " at " path " is missing"))))))
 
+(defn ^:private valid-tc-id? [time-id]
+  ;; TimeCamp IDs are ints, so each key should be an int
+  (some? (re-find #"\d+$" time-id)))
+
+(defn ^:private invalid-time-ids [time-ids]
+  (->> time-ids
+       (remove (apply some-fn valid-tc-id? sources/VALID_ID_PREDS))
+       (map #(str % " is not a valid TC id"))))
+
+(defn ^:private valid-duration? [duration]
+  ;; each value should be an hours/minutes combo or a percent
+  (some? (re-find INPUT_RE duration)))
+
+(defn ^:private invalid-durations [durations]
+  (->> durations
+       (remove valid-duration?)
+       (map #(str % " not a valid time"))))
+
 (defn ^:private args-invalid? [args]
-  (when-not
-      (and
-       (some? args)
-       (coll? args) ; is this a stupid check?
-       ;; (pos? (count args))  ;; can be empty
-       (even? (count args))  ;; must be key value pairs (allows empty)
-       ;; each key should be an int, TimeCamp IDs are ints
-       (every? some? (map #(re-find #"^\d*$" %) (take-nth 2 args)))
-       ;; each value should be an hours/minutes combo or a percent
-       (every? some? (map #(re-find INPUT_RE %) (take-nth 2 (rest args)))))
-    ;; TODO useful error messages
-    ["Time arguments do not match the required patterns"]))
+  ;; TODO useful error messages
+  (if
+      (odd? (count args)) ["Even number of arguments required (key-value pairs)"]
+      (let [time-ids (take-nth 2 args) ; args 1, 3 ,5, etc
+            durations (take-nth 2 (rest args)) ; args 2, 4, 6, etc
+            bad-ids (invalid-time-ids time-ids)
+            bad-durations (invalid-durations durations)]
+        (if (or (seq bad-ids) (seq bad-durations))
+          (concat bad-ids bad-durations)
+          []))))
 
 (defn ^:private validate-args
   "Validate command line arguments. Either return a map indicating the program
@@ -149,14 +178,11 @@
   [cli-args]
   (let [cli-args (or cli-args [])
         {:keys [arguments options errors summary]} (cli/parse-opts
-                                                    cli-args option-specs
-                                                    :summary-fn cli/summary-fn)
+                                                    cli-args option-specs)
         invalid-opts (opts-invalid? options)
-        uncreated-data-store (create-dir-if-not-exists (:data-store-dir options))
         missing-paths (paths-exist? options)
         invalid-args (args-invalid? arguments)
-        errors (concat errors invalid-opts uncreated-data-store
-                       missing-paths invalid-args)]
+        errors (concat errors invalid-opts missing-paths invalid-args)]
     (cond
       (:help options) ; help => exit OK with usage summary
       {:exit-message (usage summary) :ok? true}
@@ -180,7 +206,8 @@
          args :args} (validate-args args)
         {:keys [start-date
                 end-date
-                calendar-id
+                gc-calendar-id
+                gc-meeting-id
                 gc-secrets-file
                 data-store-dir
                 tc-api-token
@@ -191,7 +218,8 @@
       {:exit-message exit-message :ok? ok?}
       (let [{:keys [message ok?]} (transfer-gc-to-tc start-date
                                                      end-date
-                                                     calendar-id
+                                                     gc-calendar-id
+                                                     gc-meeting-id
                                                      gc-secrets-file
                                                      data-store-dir
                                                      tc-api-token

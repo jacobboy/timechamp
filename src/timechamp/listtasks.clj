@@ -1,8 +1,9 @@
 (ns timechamp.listtasks
-  (:require [timechamp.cli :as cli]
-            [timechamp.tc-util :as tc]
-            [clojure.string :as str]
-            [schema.core :as s]))
+  (:require [clojure.string :as str]
+            [schema.core :as s]
+            [timechamp.cli :as cli]
+            [timechamp.config :as config]
+            [timechamp.tc-util :as tc]))
 
 (defn ^:private usage
   [options-summary]
@@ -17,11 +18,11 @@
    (str/join \newline) ))
 
 (def ^:private option-specs
-  [["-t" "--tc-api-token TIMECAMP_API_TOKEN"
-    "TimeCamp API token. See README for more information."
-    :default (System/getenv "TIMECAMP_API_TOKEN")
-    :default-desc "$TIMECAMP_API_TOKEN"]
-   ["-h" "--help" "Show this help and exit."]])
+  [:tc-api-token ["-t" "TIMECAMP_API_TOKEN"
+                  "TimeCamp API token. See README for more information."
+                  :config? true]
+   :help
+   ["-h" nil "Show this help and exit."]])
 
 (defn ^:private opts-invalid? [opts]
   (let [api-token-missing (str/blank? (:tc-api-token opts))]

@@ -1,11 +1,11 @@
 (ns timechamp.filldays
-  (:gen-class)
-  (:require [clojure.algo.generic.functor :refer [fmap]]
-            [clojure.data.json :as json]
+  (:require [clojure.data.json :as json]
             [schema.core :as s]
             [timechamp.businesstime :as bt]
             [timechamp.gc-util :as gc]
-            [timechamp.tc-util :as tc])
+            [timechamp.jirautil :as jira]
+            [timechamp.tc-util :as tc]
+            [timechamp.eventsources :as sources])
   (:import [java.time DayOfWeek LocalDate]
            timechamp.schema.CanonicalEvent))
 
@@ -16,17 +16,51 @@
 (defn ^:private pct-pair? [[task-id time-str]]
   (some? (re-find bt/PCT_RE time-str)))
 
+(defn ^:private expand-source-tuples
+  "Returns the value of passing the tuple to the first source module that
+  returns true when passing the tuple id to the module predicate. If no modules
+  accept the tuple, return the tuple wrapped in a vector to conform to the
+  vector-of-vectors returned from module handlers."
+  [[task-id task-time :as tuple]]
+  (let [modules (conj sources/event-source-modules
+                      [nil (constantly true) vector])]
+    (for [[_ source-id-pred source-tuple-handler] modules
+          :when (source-id-pred task-id)]
+     (source-tuple-handler tuple))))
+
 (defn ^:private task-id->time-from-arguments
   "Return a map with task-id keys and minute (for absolute durations input)
    or float (for percent input) values."
   [arguments]
-  (let [args-map (apply hash-map arguments) ; create pairs {id->arg...}
-        grouped-args (group-by pct-pair? args-map) ; {bool->[[id arg]...]}
-        ; grouped-args-maps (fmap #(into {} %) grouped-args) ; {bool->{id->arg}}
-        pre-task-id->minutes (into {} (grouped-args false))
-        pre-task-id->pcts (into {} (grouped-args true))]
-    {:task-id->minutes (fmap bt/hours-str-to-minutes pre-task-id->minutes)
-     :task-id->pcts (fmap bt/pct-strs-to-num pre-task-id->pcts)}))
+  (let [f-of-x #(%1 %2)
+        val-apply-fn (fn [f] #(mapv f-of-x [identity f] %))
+        ;; val-apply-fn (fn [f] #(fn [[id time]] [id (f time)]))
+        args-tuples (partition 2 arguments)
+        grouped-args (group-by pct-pair? args-tuples) ; {bool->[[id arg]...]}
+        task-id->minutes (->>
+                          ;; [[id arg]...]
+                          (grouped-args false)
+                          ;; [[id time]...]
+                          (map (val-apply-fn bt/hours-str-to-minutes))
+                          ;; [[[id time]...] [id time] ...]
+                          (map expand-source-tuples)
+                          ;; [[id time]...]
+                          (apply concat)
+                          ;; {id->time...}
+                          (into {}))
+        task-id->pcts (->>
+                       ;; [[id arg]...]
+                       (grouped-args true)
+                       ;; [[id pct]...]
+                       (map (val-apply-fn bt/pct-strs-to-num))
+                       ;; [[[id pct]...]...]
+                       (map expand-source-tuples)
+                       ;; [[id pct]...]
+                       (apply concat)
+                       ;; {id->pct...}
+                       (into {}))]
+    {:task-id->minutes task-id->minutes
+     :task-id->pcts task-id->pcts}))
 
 (s/defn ^:private event-day :- LocalDate
   "Return the start day of the event."
@@ -108,9 +142,9 @@
   (let [partial-add-times-to-day (add-user-times-to-day task-id->minutes
                                                         task-id->pcts
                                                         minutes-worked)]
-        (->> day->events
-             (map (fn [[k v]] [k (partial-add-times-to-day k v)]))
-             (into {})))
+    (->> day->events
+         (map (fn [[k v]] [k (partial-add-times-to-day k v)]))
+         (into {})))
   #_(->>
      events
      (mapcat bt/split-event-at-midnight)
@@ -132,6 +166,7 @@
     start-date          First date to pull events from.
     end-date            Last date to pull events from.
     calendar-id         ID of the calendar to pull events from.
+    meeting-id          TimeCamp ID to use for calendar events.
     gc-secrets-file     Path to the secrets file for Google OAuth
     data-store-dir      Path to the directory in which to store OAuth creds
     tc-api-token        API token for TimeCamp
@@ -144,6 +179,7 @@
   [start-date :- LocalDate
    end-date :- LocalDate
    calendar-id :- s/Str
+   meeting-id :- s/Str
    gc-secrets-file :- s/Str
    data-store-dir :- s/Str
    tc-api-token :- s/Str
@@ -162,17 +198,17 @@
 
         end-datetime (bt/last-second-of-date end-date)
 
-        events (gc/get-events gc-secrets-file data-store-dir
-                              calendar-id start-datetime end-datetime)
-
-        day->events (create-day-event-map events days-covered)
-
-        day->filled-events (fill-days day->events
-                                      task-id->minutes
-                                      task-id->pcts
-                                      minutes-worked)
-
-        all-events (flatten (vals day->filled-events))
+        all-events (->
+                    (gc/get-events gc-secrets-file
+                                   data-store-dir
+                                   calendar-id
+                                   start-datetime
+                                   end-datetime
+                                   meeting-id)
+                    (create-day-event-map days-covered)
+                    (fill-days task-id->minutes task-id->pcts minutes-worked)
+                    vals
+                    flatten)
 
         ;; map, doesn't appear we can batch post events
         ;; TODO rate limit?

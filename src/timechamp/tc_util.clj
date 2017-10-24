@@ -14,8 +14,6 @@
 (def ^:const TC_URL_TEMPLATE
   "https://www.timecamp.com/third_party/api/%s/format/json/api_token/%s")
 
-(def ^:const TASK_IDS {:meeting "9238867"})
-
 (def TCDate s/Str)
 
 (def TCTime s/Str)
@@ -129,8 +127,8 @@
    :note (yaml/generate-string
           {:description description :source source :source-id source-id}
           :dumper-options {:flow-style :block})
-   :task_id (name (get TASK_IDS task-type task-type))
-   ;; TimeCamp docs say :duration is required, it isn't.
+   :task_id (name task-type)
+   ;; TimeCamp docs erroneously say :duration is required.
    ;; duration allows an event to tracked as some other amount of time and
    ;; doesn't appear to be editable via the portal, meaning an error in this
    ;; program could create a tracking issue the user couldn't easily find or
