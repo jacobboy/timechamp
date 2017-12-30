@@ -127,19 +127,21 @@
 (s/defn transfer-gc-to-tc :- {:message s/Str :ok? (s/maybe s/Bool)}
   "Pull events from Google Calendar and process them into TimeCamp.
   Arguments:
+    gc-meeting-id       TimeCamp ID to use for Google Calendar events.
     start-date          First date to pull events from.
     end-date            Last date to pull events from.
     calendar-id         ID of the calendar to pull events from.
-    gc-secrets-file     Path to the secrets file for Google OAuth
-    data-store-dir      Path to the directory in which to store OAuth creds
-    tc-api-token        API token for TimeCamp
-    hours-worked        Number of hours worked each day
+    gc-secrets-file     Path to the secrets file for Google OAuth.
+    data-store-dir      Path to the directory in which to store OAuth creds.
+    tc-api-token        API token for TimeCamp.
+    hours-worked        Number of hours worked each day.
     include-weekends?   Boolean indicating whether to process weekend events.
-    arguments           Sequence of unparsed Task ID/Time tuples
+    time-args           Sequence of unparsed Task ID/Time tuples.
 
   Return a map containing :message, describing how many tasks failed and
   succeeded, and optionally :ok?, true if all tasks succeeded."
-  [start-date :- LocalDate
+  [gc-meeting-id :- s/Str
+   start-date :- LocalDate
    end-date :- LocalDate
    calendar-id :- s/Str
    gc-secrets-file :- s/Str
@@ -147,9 +149,9 @@
    tc-api-token :- s/Str
    hours-worked :- s/Num
    include-weekends? :- s/Bool
-   arguments :- [s/Str]]
+   time-args :- [s/Str]]
   (let [{:keys [task-id->minutes task-id->pcts]}
-        (task-id->time-from-arguments arguments)
+        (task-id->time-from-arguments time-args)
 
         minutes-worked (bt/round (* hours-worked 60))
 
@@ -161,7 +163,8 @@
         end-datetime (bt/last-second-of-date end-date)
 
         events (gc/get-events gc-secrets-file data-store-dir
-                              calendar-id start-datetime end-datetime)
+                              calendar-id start-datetime end-datetime
+                              gc-meeting-id)
 
         day->events (create-day-event-map events days-covered)
 

@@ -15,7 +15,10 @@
     s))
 
 (def ^:private option-specs
-  [["-s" "--start-date START_DATE" "Start date (inclusive) in yyyy-MM-dd format"
+  [["-m" "--meeting-id MEETING_ID"
+    "ID of TimeCamp classification to use for Google calendar meetings"]
+
+   ["-s" "--start-date START_DATE" "Start date (inclusive) in yyyy-MM-dd format"
     :parse-fn #(LocalDate/parse %) :default (LocalDate/now)
     :default-desc "Current date"]
 
@@ -28,7 +31,8 @@
          "as events are moved to begin at 9am.")
     :parse-fn #(. Double parseDouble %1)
     :validate [#(< 0 % 15)
-               ;; Lame, >15 not compatible with 9:00 start of day
+               ;; TODO: Validate hours-worked compatible with supplied starttime
+               ;; using 15 because more is not compatible with 9:00 start of day
                "Hours worked must be less than 15."]
     :default 8]
 
@@ -105,10 +109,12 @@
 
 ;; needed because tools.cli's validation does not run if default is used
 (defn ^:private opts-invalid? [opts]
-  (let [api-token-missing (str/blank? (:tc-api-token opts))
+  (let [gc-meeting-id-missing (str/blank? (:gc-meeting-id opts))
+        api-token-missing (str/blank? (:tc-api-token opts))
         start-after-end (.isAfter (:start-date opts) (:end-date opts))]
     (->>
-     [[api-token-missing (str "TimeCamp API token is missing - did you set "
+     [[gc-meeting-id-missing (str "A meeting-id must be supplied")]
+      [api-token-missing (str "TimeCamp API token is missing - did you set "
                               "$TIMECHAMP_API_TOKEN instead of  "
                               "$TIMECAMP_API_TOKEN?")]
       [start-after-end "Start date must not be after end date"]]
@@ -118,6 +124,7 @@
 
 
 (defn ^:private create-dir-if-not-exists [dir]
+  ;; TODO Not currently needed.  Implement eventually.
   [])
 
 ;; needed because tools.cli's validation does not run if default is used
@@ -169,7 +176,7 @@
 (s/defn fill-days :- {:exit-message s/Str :ok? (s/maybe s/Bool)}
   "Attempt to pull events from Google Calendar and process them into TimeCamp.
   Return a map containing :exit-message, for print on exit, and optionally :ok?,
-  a boolean indicating success or failure."
+  indicating success or failure."
   [args :- (s/maybe [s/Str])]
   (let [{exit-message :exit-message
          ok? :ok?
@@ -177,7 +184,8 @@
          ;; transfer-gc-to-gc, while still using Schema.  Could be I
          ;; just need to learn schema better.
          args :args} (validate-args args)
-        {:keys [start-date
+        {:keys [meeting-id
+                start-date
                 end-date
                 calendar-id
                 gc-secrets-file
@@ -188,7 +196,8 @@
                 arguments]} args]
     (if exit-message
       {:exit-message exit-message :ok? ok?}
-      (let [{:keys [message ok?]} (transfer-gc-to-tc start-date
+      (let [{:keys [message ok?]} (transfer-gc-to-tc meeting-id
+                                                     start-date
                                                      end-date
                                                      calendar-id
                                                      gc-secrets-file

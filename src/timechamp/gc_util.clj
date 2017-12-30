@@ -73,7 +73,7 @@
       (.toLocalDateTime)))
 
 (s/defn ^:private gc-event-to-canonical-event :- CanonicalEvent
-  [gc-event]
+  [gc-event meeting-id]
   (let [start (.. gc-event getStart getDateTime)
         end (.. gc-event getEnd getDateTime)]
     (canonical-event {:start-time (gc-datetime-to-localdatetime start)
@@ -81,7 +81,7 @@
                       :description (. gc-event getSummary)
                       :source SOURCE_GC
                       :source-id (. gc-event getId)
-                      :task-type :meeting})))
+                      :task-type meeting-id})))
 
 (s/defn get-events :- [CanonicalEvent]
   "Retrieve events from Google Calendar.
@@ -90,12 +90,14 @@
     data-store-dir Path to the directory in which to store OAuth creds.
     calendar-id    ID of the calendar to pull events from.
     time-min       Beginning day and time.
-    time-max       Ending day and time."
+    time-max       Ending day and time.
+    gc-meeting-id  TC id to use as the task type for meetings."
   [secrets-loc :- String
    data-store-dir :- String
    calendar-id :- String
    time-min :- LocalDateTime
-   time-max :- LocalDateTime]
+   time-max :- LocalDateTime
+   gc-meeting-id :- String]
   (let [service (get-calendar-service secrets-loc data-store-dir)
         zone (timezone-for-calendar service calendar-id)]
     (->
@@ -107,4 +109,4 @@
      (.setTimeMax  (localdatetime-to-gc-datetime time-max zone))
      .execute
      .getItems
-     (->> (map gc-event-to-canonical-event)))))
+     (->> (map #(gc-event-to-canonical-event % gc-meeting-id))))))
