@@ -16,7 +16,7 @@
   {:start-date
    ["-s" "START_DATE" "Start date (inclusive) in yyyy-MM-dd format"
     :parse-fn #(LocalDate/parse %)
-    (LocalDate/now)
+    :default (LocalDate/now)
     :default-desc "Current date"]
 
    :end-date

@@ -24,9 +24,11 @@
   [[task-id task-time :as tuple]]
   (let [modules (conj sources/event-source-modules
                       [nil (constantly true) vector])]
-    (for [[_ source-id-pred source-tuple-handler] modules
-          :when (source-id-pred task-id)]
-     (source-tuple-handler tuple))))
+    (apply
+     concat
+     (for [[_ source-id-pred source-tuple-handler] modules
+           :when (source-id-pred task-id)]
+       (source-tuple-handler tuple)))))
 
 (defn ^:private task-id->time-from-arguments
   "Return a map with task-id keys and minute (for absolute durations input)
@@ -43,7 +45,7 @@
                           ;; [[id time]...]
                           (map (val-apply-fn bt/hours-str-to-minutes))
                           ;; [[[id time]...] [id time] ...]
-                          (map expand-source-tuples)
+                          (mapv expand-source-tuples)
                           ;; [[id time]...]
                           (apply concat)
                           ;; {id->time...}
