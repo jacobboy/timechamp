@@ -4,6 +4,23 @@ An application for logging [TimeCamp](https://www.timecamp.com) time tracking
 from [Google Calendar](https://calendar.google.com) and automatically
 filling unallocated time.
 
+## Getting Started
+
+The easiest way to run this is to download the standalone version of the
+[latest jar file from GitHub](https://github.com/jacobboy/timechamp/releases)
+and run
+
+``` shell
+java -jar path/to/jar <subcommand> [<args>]
+```
+e.g.
+``` shell
+java -jar timechamp.jar fill-days 9238 1h30m 8302 75m 8380 50% 8856 10%
+```
+To run or build from source, install [leiningen](https://leiningen.org/), cd to
+the base of the repo, and execute `lein run -- <args>` to run or `lein uberjar`
+to package.
+
 ## Usage
 
 ```shell
@@ -104,23 +121,6 @@ Prints TimeCamp tasks and task IDs available to the provided TimeCamp account.
 `-t, --tc-api-token TC_API_TOKEN`  
 _Default:_ `$TC_API_TOKEN`  
 TimeCamp API token. See the [TimeCamp API token section](#timecamp-api-token)
-
-## Getting Started
-
-The easiest way to run this is to download the standalone version of the
-[latest jar file from GitHub](https://github.com/jacobboy/timechamp/releases)
-and run
-
-``` shell
-java -jar path/to/jar <subcommand> [<args>]
-```
-e.g.
-``` shell
-java -jar timechamp.jar fill-days 9238 1h30m 8302 75m 8380 50% 8856 10%
-```
-To run or build from source, install [leiningen](https://leiningen.org/), cd to
-the base of the repo, and execute `lein run -- <args>` to run or `lein uberjar`
-to package.
 
 ## Requirements
 ### Task IDs
